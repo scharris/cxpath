@@ -1,6 +1,6 @@
  -  Child and descendant axes do not descend into non elements, and return only element and data nodes (not attribute collections).
  -  Removed variable bindings parameter for converters, not needed since traditional xpath strings are not supported.
- -  XML namespace uris are stored as metadata on element and attribute symbols instead of being embedded into the symbols.
+ -  XML namespace uris are paired with local name symbols in vector pairs instead of being embedded into the symbols.
  -  Attribute collections are maps instead of a-lists.
  -  Main sxpath function:
       Refactored into two parts to separate the production of converters from their application.
