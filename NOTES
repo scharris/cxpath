@@ -1,0 +1,15 @@
+ -  Child and descendant axes do not descend into non elements, and return only element and data nodes (not attribute collections).
+ -  Removed variable bindings parameter for converters, not needed since traditional xpath strings are not supported.
+ -  XML namespace uris are stored as metadata on element and attribute symbols instead of being embedded into the symbols.
+ -  Attribute collections are maps instead of a-lists.
+ -  Main sxpath function:
+      Refactored into two parts to separate the production of converters from their application.
+      Simplified subpath handling in the converter-producer part which is now much shorter and clearer.
+	  Throws exceptions for errors instead of returning #f.
+ -  Most sxpathlib functions rewritten in idiomatic clojure with many new convenience functions.
+ -  The set of axes implementations in sxpathlib was completed with ports of remaining axes functions from sxpath-ext.scm.
+
+
+TODO:
+   Extensions: introduce syntax for axes like parent and ancestor, to make them easier to use, and so the root node may automatically be passed to them.
+

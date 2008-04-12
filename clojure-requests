@@ -1,0 +1,5 @@
+Allow metadata on keywords.
+Reader macro like #^{...} but allowing a variable map:
+  (def bankns {:xmlns "http://some/ns/" :prefix "bank"})
+  ...
+  (#^{bankns} account ...)

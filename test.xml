@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?myapp a processing instruction?>
+				  
+<account title="Savings 1" xmlns:bankns="http://some.bank.com/ns">
+
+  <ownerid>12398</ownerid>
+
+  <balance currency="USD">3212.12</balance>
+
+  <descr-html>Main <b>short term savings</b> account.</descr-html>
+
+  <report-separator>  </report-separator>
+
+  <?myapp another processing instruction?>
+
+</account>
