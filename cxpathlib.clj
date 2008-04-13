@@ -101,12 +101,36 @@
 
 
 ; Syntax symbols
-(def DESCENDANT-SYM '..) 
+(def DESCENDANT-SYM '..)
+(def OR-SYM '*or*)
+(def NOT-SYM '*not*)
+(def EQUAL-LONG-SYM 'equal?)
+(def EQUAL-SHORT-SYM '=)
+(def IDENTICAL-LONG-SYM 'identical?)
+(def IDENTICAL-SHORT-SYM '==)
+(def NAMESPACE-ID-SYM 'ns-id|*)
 (def NTYPE-ELEMENT-SYM '*)
 (def NTYPE-ATTRIBUTES-SYM '*at*)
 (def NTYPE-TEXT-SYM '*text*)
 (def NTYPE-ANY-SYM  '*any*)
 (def NTYPE-DATA-SYM  '*data*)
+
+(defn is-syntax?
+  "Tests whether the passed item is one of cxpath's syntax symbols."
+  [x]
+    (or (= x DESCENDANT-SYM)
+        (= x OR-SYM)
+        (= x NOT-SYM)
+        (= x EQUAL-LONG-SYM)
+        (= x EQUAL-SHORT-SYM)
+        (= x IDENTICAL-LONG-SYM)
+        (= x IDENTICAL-SHORT-SYM)
+        (= x NAMESPACE-ID-SYM)
+        (= x NTYPE-ELEMENT-SYM)
+        (= x NTYPE-ATTRIBUTES-SYM)
+        (= x NTYPE-TEXT-SYM)
+        (= x NTYPE-ANY-SYM)
+        (= x NTYPE-DATA-SYM)))
 
 ; ------------------------------------------------
 ; tag related functions for element like nodes
@@ -138,6 +162,13 @@ This function can also be used as a predicate to test for an element-like node."
        (when-first hd node
          (when (tag? hd) hd))))
 
+
+(defn special-nonelement-tag?
+  "Determines whether the passed object is the special tag for processing instructions, comments or entities."
+  [t]
+    (or (= t cxml/PI-TAG)
+        (= t cxml/COMMENT-TAG)
+        (= t cxml/ENTITY-TAG)))
   
 (defn element?-tag
   "Returns the tag for the node if the node is an element node, including the document root
@@ -146,12 +177,9 @@ identical to the element? function, but more usefully returns the tag instead of
 nil instead of false."
     [node]
     (let [ tag (tag node) ]
-      (if (and tag
-		       (not= tag cxml/PI-TAG)
-			   (not= tag cxml/COMMENT-TAG)
-			   (not= tag cxml/ENTITY-TAG))
-		tag
-		nil)))
+      (if (and tag (not (special-nonelement-tag? tag)))
+		tag)))
+
 
 (defn xmlns 
   "Returns the xml namespace uri of an element node if any, or nil for any other type of node."
@@ -165,44 +193,51 @@ nil instead of false."
 (def tags-equal? =)
 
 
+(defn without-clj-ns 
+  "Returns the argument symbol or keyword without its clojure namespace if any."
+  [sym-or-kwd]
+    (let [nm (name sym-or-kwd)]
+      (if (symbol? sym-or-kwd)
+        (symbol nm)
+        (keyword nm))))
+
+
 (defn with-xmlns
-  "Applies namespace uri's to element and attribute tags within node which have no xml namespace
-metadata already, and for which a mapping for their clojure namespace prefix is present in the
+  "Applies namespace uri's to element and attribute tags within the passed node or nodelist which have no xml
+namespace metadata already, and for which a mapping for their clojure namespace prefix is present in the
 passed prefix->uri mapping.  For tags whose xml namespace is set in this way, the prefix is removed from
 the symbol or keyword in the resulting node. All other nodes are left alone."
-  [prefix->uri node]
-    (let [without-clj-ns (fn [sym-or-kwd]
-                             (let [nm (name sym-or-kwd)]
-                               (if (symbol? sym-or-kwd)
-                                 (symbol nm)
-                                 (keyword nm))))
-          
-          map-mapentries (fn [f m]
-                             (reduce (fn [res [key val]] (let [[new-key new-val] (f key val)] (assoc res new-key new-val)))
-                                     nil
-                                     m))
+  [prefix->uri n-nl]
+    (if (nodelist? n-nl)
+      (map #(with-xmlns prefix->uri %) n-nl)
+      ; single node
+      (let [node n-nl
+            map-mapentries (fn [f m]
+                               (reduce (fn [res [key val]] (let [[new-key new-val] (f key val)] (assoc res new-key new-val)))
+                                       nil
+                                       m))
 
-          maybe-expand-tag (fn [tag allow-default-ns]
-                               (if (or (vector? tag)             ; already has a namespace
-                                       (= cxml/DOCROOT-TAG tag)) ; document root
-                                 tag
-                                 (let [clj-ns (namespace tag)
-                                       uri (if allow-default-ns
-                                             (prefix->uri clj-ns)
-                                             (if clj-ns (prefix->uri clj-ns)))]
-                                   (if uri
-                                     (with-meta [uri (if clj-ns (without-clj-ns tag) tag)] {:xmlns-prefix clj-ns})
-                                     tag))))] ; found no uri for prefix, leave it alone
-      (if (map? node) ; attributes collection?
-        (map-mapentries (fn [attr-tag val] [(maybe-expand-tag attr-tag false) val])
-                        node)
-        (let [ el-tag (element?-tag node) ] ; element?
-          (if (not el-tag)
-            node
-            (let [new-tag (maybe-expand-tag el-tag true)]
-              (if (seq? node)
-                (lazy-cons new-tag (map #(with-xmlns prefix->uri %) (rest node)))
-                (apply vector new-tag (map #(with-xmlns prefix->uri %) (rest node))))))))))
+            maybe-expand-tag (fn [tag allow-default-ns]
+                                 (if (or (vector? tag)             ; already has a namespace
+                                         (= cxml/DOCROOT-TAG tag)) ; document root
+                                   tag
+                                   (let [clj-ns (namespace tag)
+                                         uri (if allow-default-ns
+                                               (prefix->uri clj-ns)
+                                               (if clj-ns (prefix->uri clj-ns)))]
+                                     (if uri
+                                       (with-meta [uri (if clj-ns (without-clj-ns tag) tag)] {:xmlns-prefix clj-ns})
+                                       tag))))] ; found no uri for prefix, leave it alone
+        (if (map? node) ; attributes collection?
+          (map-mapentries (fn [attr-tag val] [(maybe-expand-tag attr-tag false) val])
+                          node)
+          (let [ el-tag (element?-tag node) ] ; element?
+            (if (not el-tag)
+              node
+              (let [new-tag (maybe-expand-tag el-tag true)]
+                (if (seq? node)
+                  (lazy-cons new-tag (map #(with-xmlns prefix->uri %) (rest node)))
+                  (apply vector new-tag (map #(with-xmlns prefix->uri %) (rest node)))))))))))
 
 ; ------------------------------------------------
 
@@ -644,22 +679,19 @@ below.  Use select-kids instead if more inclusive selection is wanted."
     (fn [n-nl]       ; node or nodelist
 		(let [ tag (tag n-nl) ]
 		  (cond
-			 ; Element-like node
-		     tag (if (or (= tag cxml/PI-TAG)
-					     (= tag cxml/COMMENT-TAG)
-						 (= tag cxml/ENTITY-TAG))
-					  ; special element, no children
-					  nil
-					  ; element-like node, apply test to child element and data content as per XPath
-					  (let [ sel (fn [n] 
-									 (if (or ((ntype?? NTYPE-ELEMENT-SYM) n)
-											 ((ntype?? NTYPE-DATA-SYM) n))
-									   (conv-pred n)
-									   nil)) ]
-						((filter-nodes sel) (rest n-nl))))
-			 ; Nodelist
+			 ;; Element-like node
+		     tag (if (special-nonelement-tag? tag)
+                   nil
+                   ;; element node, apply test to child element and data content as per XPath
+                   (let [sel (fn [n] 
+                                 (if (or ((ntype?? NTYPE-ELEMENT-SYM) n)
+                                         ((ntype?? NTYPE-DATA-SYM) n))
+                                   (conv-pred n)
+                                   nil))]
+                     ((filter-nodes sel) (rest n-nl))))
+             ;; Nodelist
 			 (seq? n-nl) (mapcat (child conv-pred) n-nl) 
-			 ; Anything else
+			 ;; Anything else
 			 :else nil))))
 
 ; Convenience wrapper

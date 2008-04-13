@@ -20,11 +20,12 @@
 					(report-separator "  ")
 					(*PI* "myapp" "another processing instruction"))))
 
+(def ns-uris {nil    "http://some.bank.com/ns",
+              "html" "http://www.w3.org/HTML/1998/html4",
+              "sb"   "http://standards.org/banking"})
 
 ; The same document node with namespaces. Namespaces are stored in the metadatas of the tags.
-(def doc-node-ns (with-xmlns {nil    "http://some.bank.com/ns",
-							  "html" "http://www.w3.org/HTML/1998/html4",
-							  "sb"   "http://standards.org/banking"}
+(def doc-node-ns (with-xmlns ns-uris
                     '(*TOP*
                       (*PI* "myapp" "a processing instruction")
                       (account {title "Savings 1" created "5/5/2008"}
@@ -45,9 +46,7 @@
 				 (["http://some.bank.com/ns" report-separator] "  ")
 				 (*PI* "myapp" "another processing instruction")))))
 
-(def doc-node-ns-v (with-xmlns {nil    "http://some.bank.com/ns",
-								"html" "http://www.w3.org/HTML/1998/html4",
-								"sb"   "http://standards.org/banking"}
+(def doc-node-ns-v (with-xmlns ns-uris
                     '[*TOP*
                       [*PI* "myapp" "a processing instruction"]
                       [account {title "Savings 1" created "5/5/2008"}
@@ -81,9 +80,7 @@
 				   (report-separator "  ") (*PI* "myapp" "another processing instruction")))
 
 (def account-el-ns
-	 (with-xmlns {nil     "http://some.bank.com/ns",
-				  "html" "http://www.w3.org/HTML/1998/html4",
-				  "sb"   "http://standards.org/banking"}
+	 (with-xmlns ns-uris
 				 '(account {title "Savings 1" created "5/5/2008"}
 				    (ownerid "12398")
 					(balance {sb/currency "USD"} "3212.12") ; namespace on attribute
@@ -617,6 +614,10 @@
 			 (nested2 "nestedtext2"))
 		   ((descendant-or-self (ntype?? '*)) nodelist)))
 
+;; expand-ns-prefixes
+(assert (= '(["http://etc" el] el (*not* ["http://etc" el] el (el ["http://etc" el])) el ["http://etc" b])
+           (expand-ns-prefixes '(h/el el (*not* h/el el (el h/el)) el h/b) {"h" "http://etc"})))
+
 
 
 ;; cxpath tests
@@ -624,31 +625,38 @@
 (assert (= (list account-el)
 		   ((cxpath '(account)) doc-node)))
 
-(assert ((node-equal? account-el-ns)
-		 (first ((cxpath '(["http://some.bank.com/ns" account])) doc-node-ns))))
+(assert (= (list account-el-ns)
+		 ((cxpath '(["http://some.bank.com/ns" account])) doc-node-ns)))
+
+; same thing with namespace map applying default namespace on the account element
+(assert (= (list account-el-ns)
+           ((cxpath '(account) ns-uris) doc-node-ns)))
 
 (assert (= '((ownerid "12398"))
 		   ((cxpath '(account ownerid)) doc-node)))
 
 (assert (= '((["http://some.bank.com/ns" ownerid] "12398"))
-		   ((cxpath '(["http://some.bank.com/ns" account] ["http://some.bank.com/ns" ownerid])) doc-node-ns)))
+		   ((cxpath '(account ownerid) ns-uris) doc-node-ns)))
 
 (assert (= '((ownerid "12398") (balance {currency "USD"} "3212.12"))
-		   ((cxpath '(account (:or ownerid balance))) doc-node)))
+		   ((cxpath '(account (*or* ownerid balance))) doc-node)))
 
 (assert (= '((["http://some.bank.com/ns" ownerid] "12398") (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"))
-		   ((cxpath '(["http://some.bank.com/ns" account] (:or ["http://some.bank.com/ns" ownerid] ["http://some.bank.com/ns" balance]))) doc-node-ns)))
+		   ((cxpath '(account (*or* ownerid balance)) ns-uris) doc-node-ns)))
+
+(assert (= (with-xmlns ns-uris '((ownerid "12398")  (balance {sb/currency "USD"} "3212.12")))
+		   ((cxpath '(account (*or* ownerid balance)) ns-uris) doc-node-ns)))
 
 
 (assert (= '({title "Savings 1" created "5/5/2008"}
 			 (descr-html "Main " (b "short term savings") " account.")
 			 (report-separator "  ")
 			 (*PI* "myapp" "another processing instruction"))
-   		   ((cxpath '(account (:not ownerid balance))) doc-node)))
+   		   ((cxpath '(account (*not* ownerid balance))) doc-node)))
 
 ; TODO: better syntax for this?  Syntax quote seems to garble things too much by inserting namespaces on symbols: how to handle this?
 (assert (= '((descr-html "Main " (b "short term savings") " account.") (report-separator "  "))
-           ((cxpath (concat '(account (:not ownerid balance)) (list (filter-nodes element?)))) doc-node)))
+           ((cxpath (concat '(account (*not* ownerid balance)) (list (filter-nodes element?)))) doc-node)))
 
 (assert (= '("12398")
 		   ((cxpath '(account ownerid *text*)) doc-node)))

@@ -2,12 +2,13 @@
 (in-ns 'cxpath)
 (clojure/refer 'clojure)
 
+(load-file "cxml.clj")
 (load-file "cxpathlib.clj")
 
 
 ;; [Notes from the original Scheme implementation]
 ;; $Id: sxpath.scm,v 1.5 2005/09/07 09:27:34 lizorkin Exp $
-;; Highghest level SXPath 
+;; Highghest level SXaPth 
 ;; Refactored from sxml-tools.scm and sxpathlib.scm
 ;==============================================================================
 ; Abbreviated SXPath
@@ -48,6 +49,8 @@
 ; TODO: Implement syntax for parent (^), ancestor(^..), and maybe other axes to make them easier to use (no need to pass root node).
 
 (def converters-for-path)
+(def expand-ns-prefixes)
+
 
 (defn cxpath
   "cxpath:: [PathComponent] (,NS_Bindings)? -> Node|Nodelist -> Nodelist
@@ -55,13 +58,13 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
   ([path]
      (cxpath path nil))
   ([path ns-bindings]
-     (let [ converters (converters-for-path path ns-bindings) ]
+     (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings))]
 	   (fn [n-nl] 
 		  ((apply node-reduce converters) n-nl)))))
 
 
 (defn converters-for-path 
-  [path ns-binding]
+  [path]
     (let [symbolic-or-tag? (fn [x] (or (symbolic? x) (compound-tag? x)))]
       
       (loop [converters nil
@@ -96,20 +99,21 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             (seq loc-step)
 		      (let [ fst-sstep (first loc-step) ]
 			    (cond
-			       (= :or fst-sstep)
+			       (= OR-SYM fst-sstep)
 				     (recur (cons (select-kids (ntype-names?? (rest loc-step))) converters)
 					   	    (rest path))
-                   (= :not fst-sstep)
+                   (= NOT-SYM fst-sstep)
 				     (recur (cons (select-kids (complement (ntype-names?? (rest loc-step)))) converters)
                             (rest path))
-				   (or (= 'equal? fst-sstep)
-                       (= '=      fst-sstep))
+				   (or (= EQUAL-LONG-SYM  fst-sstep)
+                       (= EQUAL-SHORT-SYM fst-sstep))
 				     (recur (cons (select-kids (apply node-equal? (rest loc-step))) converters)
                             (rest path))
-                   (= 'eq? fst-sstep)
-				     (recur (cons (select-kids (apply node-eq? (rest loc-step))) converters)
+                   (or (= IDENTICAL-LONG-SYM fst-sstep)
+                       (= IDENTICAL-SHORT-SYM fst-sstep))
+                     (recur (cons (select-kids (apply node-eq? (rest loc-step))) converters)
                             (rest path))
-				   (= 'ns-id|* fst-sstep)
+				   (= NAMESPACE-ID-SYM fst-sstep)
 				     (recur (cons (select-kids (ntype-namespace-id?? (first (rest loc-step)))) converters)
                             (rest path))
                    ;; general sub-path handler
@@ -117,12 +121,12 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 				     (let [;; selector for the initial substep
                            selector (if (symbolic-or-tag? fst-sstep)
                                       (select-kids (ntype?? fst-sstep))
-                                      (cxpath fst-sstep ns-binding)) ; first substep should be a sequence
+                                      (cxpath fst-sstep)) ; first substep should be a sequence
 						   ;; converters for the remaining substeps, which act only as successive filters on the initial selector output
                            filters (map (fn [sstep] 
                                             (if (integer? sstep) 
                                               (node-pos sstep)
-                                              (filter-nodes (cxpath sstep ns-binding)))) ; TODO: sstep should be in a singleton sequence here?
+                                              (filter-nodes (cxpath sstep))))
                                         (rest loc-step))
 						   ;; composition of initial selector and the converters
                            filtered-selector (apply node-reduce (cons selector filters))]
@@ -133,6 +137,30 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             ;; invalid
             :else 
 		      (throw (new java.lang.RuntimeException (str "Invalid path step: " loc-step))))))))
+
+
+(defn expand-ns-prefixes
+  [path prefix->uri]
+    (if prefix->uri
+      (let [is-namespaceable-symbolic-tag? #(and (symbolic? %)
+                                                 (not (is-syntax? %))
+                                                 (not (special-nonelement-tag? %))
+                                                 (not= cxml/DOCROOT-TAG %))
+            maybe-expand-tag (fn [tag]
+                                 (let [clj-ns (namespace tag)
+                                       uri (prefix->uri clj-ns)]
+                                   (if uri
+                                     (with-meta [uri (if clj-ns (without-clj-ns tag) tag)] {:xmlns-prefix clj-ns})
+                                     tag)))] ; found no uri for prefix, leave it alone
+        (map (fn [step]
+                 (cond
+                    (seq? step)
+                      (expand-ns-prefixes step prefix->uri)
+                    (is-namespaceable-symbolic-tag? step)
+                      (maybe-expand-tag step)
+                    :else step))
+             path))
+    path))
 
 ; (load-file "cxpath.clj")
 
