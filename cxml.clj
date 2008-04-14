@@ -1,8 +1,8 @@
 ;
-;   Derived from Rich Hickey's xml.clj by Steve Harris.
+;   Parts of the following are derived from Rich Hickey's xml.clj by Steve Harris.
 ;   Copyright (c) Rich Hickey. All rights reserved.
 ;   The use and distribution terms for this software are covered by the
-;   Common Public License 1.0 (http://opensource.org/licenses/cpl.php)
+;   Common Public License 1.0 (http://opensource.org/licenses/cpl1.0.php)
 ;   which can be found in the file CPL.TXT at the root of this distribution.
 ;   By using this software in any fashion, you are agreeing to be bound by
 ;   the terms of this license.
@@ -127,7 +127,7 @@
                      (cond
                        (or (= *state* :element-started) (= *state* :ws-read-after-element-start)) :ws-read-after-element-start
                        (or (= *state* :element-ended)   (= *state* :ws-read-after-element-end))   :ws-read-after-element-end
-                       true :chars-read)
+                       :else :chars-read)
                      :chars-read)))
            nil)
 
@@ -147,12 +147,12 @@
            nil)
          
 
+		 (startDocument [])
+         (endDocument [])
 		 (startPrefixMapping [prefix uri])
 		 (endPrefixMapping [prefix])
-         (setDocumentLocator [locator])
-         (startDocument [])
-         (endDocument [])))))
-        
+         (setDocumentLocator [locator])))))
+       
 
 
 (defn parse-impl
@@ -184,19 +184,25 @@
 
 (def parse parse-to-list)
 
-(comment Parser tests
 
-(def xml-str (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-				  "<?myapp a processing instruction?>"
-				  "<account title='Savings 1' created='5/5/2008'>" 
-				  "<ownerid>12398</ownerid>"
-				  "<balance currency=\"USD\">3212.12</balance>"
-				  "<descr-html>Main <b>short term savings</b> account.</descr-html>"
-				  "<report-separator>  </report-separator>"
-				  "<?myapp another processing instruction?>"
-				  "</account>"))
 
-(def xml-str-ns "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+;; -----------------------------------------------------------------------------------
+;; Tests
+;; -----------------------------------------------------------------------------------
+
+(defn run-tests []
+  (let [xml-str 
+"<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+ <?myapp a processing instruction?>
+<account title='Savings 1' created='5/5/2008'>
+  <ownerid>12398</ownerid>
+  <balance currency=\"USD\">3212.12</balance>
+  <descr-html>Main <b>short term savings</b> account.</descr-html>
+  <report-separator>  </report-separator>
+  <?myapp another processing instruction?>
+</account>"
+		xml-str-ns
+"<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?myapp a processing instruction?>
 <account title=\"Savings 1\" created='5/5/2008' xmlns=\"http://some.bank.com/ns\">
   <ownerid>12398</ownerid>
@@ -204,15 +210,93 @@
   <descr-html xmlns:h=\"http://www.w3.org/HTML/1998/html4\">Main <h:b>short term savings</h:b> account.</descr-html>
   <report-separator>  </report-separator>
   <?myapp another processing instruction?>
-</account>")
+</account>"]
+		
+   (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str))
+			  '(*TOP*
+				  (*PI* "myapp" "a processing instruction")
+				  (account {title "Savings 1" created "5/5/2008"}
+				    (ownerid "12398")
+					(balance {currency "USD"} "3212.12")
+					(descr-html "Main " (b "short term savings") " account.")
+					(report-separator "  ")
+					(*PI* "myapp" "another processing instruction")))))
+   
+   (assert (= (cxml/parse-to-vector (new java.io.StringReader xml-str))
+			  '[*TOP*
+				  [*PI* "myapp" "a processing instruction"]
+				  [account {title "Savings 1" created "5/5/2008"}
+				    [ownerid "12398"]
+					[balance {currency "USD"} "3212.12"]
+					[descr-html "Main " [b "short term savings"] " account."]
+					[report-separator "  "]
+					[*PI* "myapp" "another processing instruction"]]]))
 
-(def doc1 (cxml/parse-to-list (new java.io.StringReader xml-str)))
-(def doc2 (cxml/parse-to-vector (new java.io.StringReader xml-str)))
-(def doc3 (cxml/parse-to-list (new java.io.StringReader xml-str-ns)))
-(def doc4 (cxml/parse-to-vector (new java.io.StringReader xml-str-ns)))
-(def doc5 (cxml/parse-to-vector (new java.io.StringReader xml-str) {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true}))
-(def doc6 (cxml/parse-to-vector (new java.io.StringReader xml-str-ns) {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true}))
+   
+   (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str-ns))
+			  '(*TOP* 
+				(*PI* "myapp" "a processing instruction")
+				(["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+				   (["http://some.bank.com/ns" ownerid] "12398")
+				   (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
+				   (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
+				   (["http://some.bank.com/ns" report-separator] "  ")
+				   (*PI* "myapp" "another processing instruction")))))
 
-)
+   (assert (= (cxml/parse-to-vector (new java.io.StringReader xml-str-ns))
+			  '[*TOP* 
+				[*PI* "myapp" "a processing instruction"]
+				[["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+				   [["http://some.bank.com/ns" ownerid] "12398"]
+				   [["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"]
+				   [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."]
+				   [["http://some.bank.com/ns" report-separator] "  "]
+				   [*PI* "myapp" "another processing instruction"]]]))
+
+   
+   (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str)
+								  {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true})
+			  '(*TOP*
+				(*PI* "myapp" "a processing instruction")
+				(:account {:created "5/5/2008", :title "Savings 1"} 
+				 (:ownerid "12398")
+				 (:balance {:currency "USD"} "3212.12")
+				 (:descr-html "Main " (:b "short term savings") " account.")
+				 (:report-separator "  ")
+				 (*PI* "myapp" "another processing instruction")))))
+
+   (assert (=  (cxml/parse-to-vector (new java.io.StringReader xml-str)
+									 {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true})
+			  '[*TOP*
+				[*PI* "myapp" "a processing instruction"]
+				[:account {:created "5/5/2008", :title "Savings 1"} 
+				 [:ownerid "12398"]
+				 [:balance {:currency "USD"} "3212.12"]
+				 [:descr-html "Main " [:b "short term savings"] " account."]
+				 [:report-separator "  "]
+				 [*PI* "myapp" "another processing instruction"]]]))
+
+
+   (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str-ns)
+								  {:keyword-attributes? true})
+			  '(*TOP* 
+				(*PI* "myapp" "a processing instruction") 
+				(["http://some.bank.com/ns" account] {:created "5/5/2008", :title "Savings 1"} "\n  " 
+				   (["http://some.bank.com/ns" ownerid] "12398") "\n  "
+				   (["http://some.bank.com/ns" balance] {["http://standards.org/banking" :currency] "USD"} "3212.12") "\n  "
+				   (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.") "\n  "
+				   (["http://some.bank.com/ns" report-separator] "  ") "\n  "
+				   (*PI* "myapp" "another processing instruction") "\n"))))
+
+   (assert (= (cxml/parse-to-vector (new java.io.StringReader xml-str-ns)
+									{:keyword-attributes? true})
+			  '[*TOP* 
+				[*PI* "myapp" "a processing instruction"] 
+				[["http://some.bank.com/ns" account] {:created "5/5/2008", :title "Savings 1"} "\n  " 
+				   [["http://some.bank.com/ns" ownerid] "12398"] "\n  "
+				   [["http://some.bank.com/ns" balance] {["http://standards.org/banking" :currency] "USD"} "3212.12"] "\n  "
+				   [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."] "\n  "
+				   [["http://some.bank.com/ns" report-separator] "  "] "\n  "
+				   [*PI* "myapp" "another processing instruction"] "\n"]]))))
 
 ; (load-file "cxml.clj")

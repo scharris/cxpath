@@ -1,3 +1,23 @@
+; This code Public Domain.
+; It's based on SXPath by Oleg Kiselyov, and multiple improvements 
+; implemented by Dmitry Lizorkin.  It has been refactored, modified, 
+; and ported to Clojure from the original Scheme sxml-tools distribution
+; by Steve Harris, available at gmail.com as user steveOfAR.  Comments
+; and bug reports are welcome.
+; Links:
+;   - Oleg's original SXML/SXPath is available at:
+;         http://okmij.org/ftp/Scheme/xml.html
+;   - Dmitry Lizorkin's sxml-tools distribution, which includes a modified SXPath distribution, is at:
+;         http://ssax.sourceforge.net/
+
+; Differences vs. the original Scheme implementation from sxml-tools:
+;   - This version will never return nil, throwing a RuntimeException instead.
+;   - Converters production has been separated into its own function.
+;   - Refactored, especially sub-path handling.  Node-reduce used where possible.
+;   - Traditional w3c xpath strings are not supported as location steps.
+;   - Removed variable bindings everywhere, as they are only needed for tradtional xpath support.
+;   - New prefix expansion feature allowing prefix/symbol to be expanded to [uri symbol] qualified tags.
+;   - (TODO) New parent, ancestor operators.
 
 (in-ns 'cxpath)
 (clojure/refer 'clojure)
@@ -5,46 +25,6 @@
 (load-file "cxml.clj")
 (load-file "cxpathlib.clj")
 
-
-;; [Notes from the original Scheme implementation]
-;; $Id: sxpath.scm,v 1.5 2005/09/07 09:27:34 lizorkin Exp $
-;; Highghest level SXaPth 
-;; Refactored from sxml-tools.scm and sxpathlib.scm
-;==============================================================================
-; Abbreviated SXPath
-
-; Evaluate an abbreviated SXPath
-;	sxpath:: AbbrPath -> Converter, or
-;	sxpath:: AbbrPath -> Node|Nodelist -> Nodelist
-; AbbrPath is a list. It is translated to the full SXPath according
-; to the following rewriting rules
-; (sxpath '()) -> (node-join)
-; (sxpath '(path-component ...)) ->
-;		(node-join (sxpath1 path-component) (sxpath '(...)))     ; SCH - OK - this impl uses node-reduce directly on the converters produced by sxpath1
-; (sxpath1 '//) -> (descendant-or-self xpath-node?)              ; SCH - this impl checks next step and sometimes omits self (optimization?)
-; (sxpath1 '(equal? x)) -> (select-kids (node-equal? x))
-; (sxpath1 '(eq? x))    -> (select-kids (node-eq? x))
-; (sxpath1 '(:or ...))  -> (select-kids (ntype-names??
-;                                          (cdr '(:or ...))))
-; (sxpath1 '(:not ...)) -> (select-kids (complement (ntype-names?? (cdr '(:not ...)))))
-; (sxpath1 '(ns-id|* x)) -> (select-kids 
-;                                      (ntype-namespace-id?? x))
-; (sxpath1 ?symbol)     -> (select-kids (ntype?? ?symbol))
-; (sxpath1 ?string)     -> (txpath ?string)                     ; SCH - omitted
-; (sxpath1 procedure)   -> procedure
-; (sxpath1 '(?symbol ...)) -> (sxpath1 '((?symbol) ...))        
-; (sxpath1 '(path reducer ...)) ->
-;		(node-reduce (sxpath path) (sxpathr reducer) ...)
-; (sxpathr number)      -> (node-pos number)
-; (sxpathr path-filter) -> (filter (sxpath path-filter))
-
-
-; Differences vs. the original Scheme implementation from sxml-tools:
-;   - This version will never return nil, throwing a RuntimeException instead.
-;   - Traditional w3c xpath strings are not supported as location steps.
-;   - Removed variable bindings everywhere, as they are only needed for tradtional xpath support.
-;   - Converters production has been separated into its own function.
-;   - Refactored, especially sub-path handling.
 
 ; TODO: Implement syntax for parent (^), ancestor(^..), and maybe other axes to make them easier to use (no need to pass root node).
 
@@ -58,13 +38,13 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
   ([path]
      (cxpath path nil))
   ([path ns-bindings]
-     (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings))]
-	   (fn [n-nl] 
-		  ((apply node-reduce converters) n-nl)))))
+	 (fn [n-nl] 
+		 (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings) n-nl)]
+		   ((apply node-reduce converters) n-nl)))))
 
 
 (defn converters-for-path 
-  [path]
+  [path root-node]
     (let [symbolic-or-tag? (fn [x] (or (symbolic? x) (compound-tag? x)))]
       
       (loop [converters nil
@@ -77,16 +57,37 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 
 		    ;; descendant handler
             (= DESCENDANT-SYM loc-step)
-		      (if (or (nil? (rest path))
-                      (not (symbolic-or-tag? (frest path)))
-                      (= (frest path) NTYPE-ATTRIBUTES-SYM))
-                (recur (cons (descendant-or-self xpath-node?) converters)
+		      (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
+                      (not (symbolic-or-tag? (frest path)))  ;|
+                      (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
+                (recur (cons (descendant-or-self xpath-node?) converters)    ; general case
                        (rest path))
-                (recur (cons (descendant (ntype?? (frest path))) converters)
+                (recur (cons (descendant (ntype?? (frest path))) converters) ; optimized case
                        (rrest path)))
 
-            ;; handler for element-like nodes (including attributes and special elements), and attribute collections
-            (symbolic-or-tag? loc-step)
+			;; parent handler TODO: test
+            (= PARENT-SYM loc-step)
+			  (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
+					  (not (symbolic-or-tag? (frest path)))  ;|
+					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
+				(recur (cons (parent (ntype?? NTYPE-ANY-SYM) root-node) converters) ; general case
+					   (rest path))
+			    (recur (cons (parent (ntype?? (frest path)) root-node) converters)  ; optimized case
+					   (rrest path)))
+			
+            ;; ancestor handler TODO: test
+            (= ANCESTOR-SYM loc-step)
+			  (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
+					  (not (symbolic-or-tag? (frest path)))  ;|
+					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
+				(recur (cons (ancestor-or-self (ntype?? NTYPE-ANY-SYM) root-node) converters) ; general case
+					   (rest path))
+			    (recur (cons (ancestor (ntype?? (frest path)) root-node) converters)          ; optimized case
+					   (rrest path)))
+			
+
+			;; handler for element-like nodes (including attributes and special elements), and attribute collections
+			(symbolic-or-tag? loc-step)
               (recur (cons (select-kids (ntype?? loc-step)) converters)
                      (rest path))
 

@@ -1,88 +1,16 @@
-;           XML processing in Scheme
-;            SXPath -- SXML Query Language
-;
-; $Id: sxpathlib.scm,v 3.918 2004/02/05 22:52:33 kl Exp kl $
-;
-; This code is in Public Domain
+; This code is Public Domain.
 ; It's based on SXPath by Oleg Kiselyov, and multiple improvements 
-; implemented by Dmitry Lizorkin.
-;
-; The list of differences from original SXPath.scm my be found in changelog.txt
-; 
-;  Kirill Lisovsky    lisovsky@acm.org
-;
-;                                 *  *  *
-;
-; SXPath is a query language for SXML, an instance of XML Information
-; set (Infoset) in the form of s-expressions. See SSAX.scm for the
-; definition of SXML and more details. SXPath is also a translation into
-; Scheme of an XML Path Language, XPath:
-;   http://www.w3.org/TR/xpath
-; XPath and SXPath describe means of selecting a set of Infoset's items
-; or their properties.
-;
-; To facilitate queries, XPath maps the XML Infoset into an explicit
-; tree, and introduces important notions of a location path and a
-; current, context node. A location path denotes a selection of a set of
-; nodes relative to a context node. Any XPath tree has a distinguished,
-; root node -- which serves as the context node for absolute location
-; paths. Location path is recursively defined as a location step joined
-; with a location path. A location step is a simple query of the
-; database relative to a context node. A step may include expressions
-; that further filter the selected set. Each node in the resulting set
-; is used as a context node for the adjoining location path. The result
-; of the step is a union of the sets returned by the latter location
-; paths.
-;
-; The SXML representation of the XML Infoset (see SSAX.scm) is rather
-; suitable for querying as it is. Bowing to the XPath specification,
-; we will refer to SXML information items as 'Nodes':
-;   <Node> ::= <Element> | <attributes-coll> | <attrib>
-;          | "text string" | <PI>
-; This production can also be described as
-;   <Node> ::= (name . <Nodelist>) | "text string"
-; An (ordered) set of nodes is just a list of the constituent nodes:
-;   <Nodelist> ::= (<Node> ...)
-; Nodelists, and Nodes other than text strings are both lists. A
-; <Nodelist> however is either an empty list, or a list whose head is not
-; a symbol.  A symbol at the head of a node is either an XML name (in
-; which case it's a tag of an XML element), or an administrative name
-; such as '@'.  This uniform list representation makes processing rather
-; simple and elegant, while avoiding confusion. The multi-branch tree
-; structure formed by the mutually-recursive datatypes <Node> and
-; <Nodelist> lends itself well to processing by functional languages.
-;
-; A location path is in fact a composite query over an XPath tree or
-; its branch. A singe step is a combination of a projection, selection
-; or a transitive closure. Multiple steps are combined via join and
-; union operations. This insight allows us to _elegantly_ implement
-; XPath as a sequence of projection and filtering primitives --
-; converters -- joined by _combinators_. Each converter takes a node
-; and returns a nodelist which is the result of the corresponding query
-; relative to that node. A converter can also be called on a set of
-; nodes. In that case it returns a union of the corresponding queries over
-; each node in the set. The union is easily implemented as a list
-; append operation as all nodes in a SXML tree are considered
-; distinct, by XPath conventions. We also preserve the order of the
-; members in the union. Query combinators are high-order functions:
-; they take converter(s) (which is a Node|Nodelist -> Nodelist function)
-; and compose or otherwise combine them. We will be concerned with
-; only relative location paths [XPath]: an absolute location path is a
-; relative path applied to the root node.
-;
-; Similarly to XPath, SXPath defines full and abbreviated notations
-; for location paths. In both cases, the abbreviated notation can be
-; mechanically expanded into the full form by simple rewriting
-; rules. In case of SXPath the corresponding rules are given as
-; comments to a sxpath function, below. The regression test suite at
-; the end of this file shows a representative sample of SXPaths in
-; both notations, juxtaposed with the corresponding XPath
-; expressions. Most of the samples are borrowed literally from the
-; XPath specification, while the others are adjusted for our running
-; example, tree1.
-;
+; implemented by Dmitry Lizorkin.  It has been refactored, modified, 
+; and ported to Clojure from the original Scheme sxml-tools distribution
+; by Steve Harris, available at gmail.com as user steveOfAR.  Comments
+; and bug reports are welcome.
+; Links:
+;   - Oleg's original SXML/SXPath is available at:
+;         http://okmij.org/ftp/Scheme/xml.html
+;   - Dmitry Lizorkin's sxml-tools distribution, which includes a modified SXPath distribution, is at:
+;         http://ssax.sourceforge.net/
 
-; Terminology:
+; Terminology for this port:
 ;   Converter :: Node|Nodelist -> Nodelist
 ;   Selector :: Node -> Nodelist (note: the original Scheme impl. allowed Node output as well)
 ;   Predicate :: Node -> Boolean
@@ -102,6 +30,8 @@
 
 ; Syntax symbols
 (def DESCENDANT-SYM '..)
+(def PARENT-SYM '*par*)
+(def ANCESTOR-SYM '*anc*)
 (def OR-SYM '*or*)
 (def NOT-SYM '*not*)
 (def EQUAL-LONG-SYM 'equal?)
@@ -119,6 +49,8 @@
   "Tests whether the passed item is one of cxpath's syntax symbols."
   [x]
     (or (= x DESCENDANT-SYM)
+        (= x PARENT-SYM)
+        (= x ANCESTOR-SYM)
         (= x OR-SYM)
         (= x NOT-SYM)
         (= x EQUAL-LONG-SYM)
@@ -201,6 +133,7 @@ nil instead of false."
         (symbol nm)
         (keyword nm))))
 
+(def nodelist?)
 
 (defn with-xmlns
   "Applies namespace uri's to element and attribute tags within the passed node or nodelist which have no xml
