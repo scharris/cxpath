@@ -26,8 +26,6 @@
 (load-file "cxpathlib.clj")
 
 
-; TODO: Implement syntax for parent (^), ancestor(^..), and maybe other axes to make them easier to use (no need to pass root node).
-
 (def converters-for-path)
 (def expand-ns-prefixes)
 
@@ -44,7 +42,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 
 
 (defn converters-for-path 
-  [path root-node]
+  [path root-nodes]
     (let [symbolic-or-tag? (fn [x] (or (symbolic? x) (compound-tag? x)))]
       
       (loop [converters nil
@@ -65,24 +63,24 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                 (recur (cons (descendant (ntype?? (frest path))) converters) ; optimized case
                        (rrest path)))
 
-			;; parent handler TODO: test
+			;; parent handler
             (= PARENT-SYM loc-step)
 			  (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
 					  (not (symbolic-or-tag? (frest path)))  ;|
 					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
-				(recur (cons (parent (ntype?? NTYPE-ANY-SYM) root-node) converters) ; general case
+				(recur (cons ((parent (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
 					   (rest path))
-			    (recur (cons (parent (ntype?? (frest path)) root-node) converters)  ; optimized case
+			    (recur (cons ((parent (ntype?? (frest path))) root-nodes) converters)  ; optimized case
 					   (rrest path)))
 			
-            ;; ancestor handler TODO: test
+            ;; ancestor handler
             (= ANCESTOR-SYM loc-step)
 			  (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
 					  (not (symbolic-or-tag? (frest path)))  ;|
 					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
-				(recur (cons (ancestor-or-self (ntype?? NTYPE-ANY-SYM) root-node) converters) ; general case
+				(recur (cons ((ancestor-or-self (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
 					   (rest path))
-			    (recur (cons (ancestor (ntype?? (frest path)) root-node) converters)          ; optimized case
+			    (recur (cons ((ancestor (ntype?? (frest path))) root-nodes) converters)          ; optimized case
 					   (rrest path)))
 			
 
