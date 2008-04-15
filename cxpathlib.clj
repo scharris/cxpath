@@ -27,11 +27,12 @@
 (clojure/refer 'clojure)
 (load-file "cxml.clj")
 
-
+; TODO
+; (el * el2 ** el3 .. ..*)
 ; Syntax symbols
-(def DESCENDANT-SYM '..)
-(def PARENT-SYM '*par*)
-(def ANCESTOR-SYM '*anc*)
+(def DESCENDANT-SYM '**)
+(def PARENT-SYM '..)
+(def ANCESTOR-SYM '..*)
 (def OR-SYM '*or*)
 (def NOT-SYM '*not*)
 (def EQUAL-LONG-SYM 'equal?)
@@ -684,7 +685,7 @@ This parent axis can be used with any cxml node."
 
 ; Ancestor axis
 
-; Implementation function, parameterized over whether to include the nodes themselves or proper ancestors only.
+; Implementation function for the following ancestor aces functions, parameterized over whether to include the nodes themselves or proper ancestors only.
 (defn- ancestor-impl
   [include-selves]
   (fn [conv-pred]

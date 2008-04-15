@@ -53,11 +53,13 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             ;; parsing finished
             (nil? path) (reverse converters)
 
+			;; TODO: ..* after .. not working properly (see unit tests at bottom): check optimized logic below, may need to exclude more cases.
+
 		    ;; descendant handler
             (= DESCENDANT-SYM loc-step)
-		      (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
-                      (not (symbolic-or-tag? (frest path)))  ;|
-                      (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
+		      (if (or (nil? (rest path))                     
+                      (not (symbolic-or-tag? (frest path)))  
+                      (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
                 (recur (cons (descendant-or-self xpath-node?) converters)    ; general case
                        (rest path))
                 (recur (cons (descendant (ntype?? (frest path))) converters) ; optimized case
@@ -65,9 +67,9 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 
 			;; parent handler
             (= PARENT-SYM loc-step)
-			  (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
-					  (not (symbolic-or-tag? (frest path)))  ;|
-					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
+			  (if (or (nil? (rest path))                     
+					  (not (symbolic-or-tag? (frest path)))  
+					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
 				(recur (cons ((parent (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
 					   (rest path))
 			    (recur (cons ((parent (ntype?? (frest path))) root-nodes) converters)  ; optimized case
@@ -75,9 +77,9 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 			
             ;; ancestor handler
             (= ANCESTOR-SYM loc-step)
-			  (if (or (nil? (rest path))                     ;| Don't try to optimize based on following step if any of these three are true
-					  (not (symbolic-or-tag? (frest path)))  ;|
-					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) ;|
+			  (if (or (nil? (rest path))                     
+					  (not (symbolic-or-tag? (frest path)))  
+					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
 				(recur (cons ((ancestor-or-self (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
 					   (rest path))
 			    (recur (cons ((ancestor (ntype?? (frest path))) root-nodes) converters)          ; optimized case

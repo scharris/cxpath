@@ -665,15 +665,15 @@
            ((cxpath '(account *at* title *text*)) doc-node)))
 
 (assert (= (list account-el)
-           ((cxpath '(account *at* title *par*)) doc-node)))
+           ((cxpath '(account *at* title ..)) doc-node)))
 
 (assert (= (list '[title "Savings 1"] 
                  account-el
                  doc-node)
-           ((cxpath '(account *at* title *anc*)) doc-node)))
+           ((cxpath '(account *at* title ..*)) doc-node)))
 
 (assert (= '([currency "USD"] [title "Savings 1"] [created "5/5/2008"])
-           ((cxpath '(account balance *at* currency *anc* *at* *)) doc-node)))
+           ((cxpath '(account balance *at* currency ..* *at* *)) doc-node)))
 
 
 ; Syntax within a subpath is different from that in the top level. Subpaths have the special form: '(symbol-or-path path*). 
@@ -698,17 +698,28 @@
 
 ; Retrieve all attribute collections in the document
 (assert (= '({title "Savings 1" created "5/5/2008"} {currency "USD"})
-           ((cxpath '(.. *at*)) doc-node)))
+           ((cxpath '(** *at*)) doc-node)))
 
 ; Attribute/value pair vectors are treated as subelements of an attributes collection once that axis is entered.
 ; Retrieve all attribute values in the document
 (assert (= '("Savings 1" "5/5/2008" "USD")
-           ((cxpath '(.. *at* * *text*)) doc-node))) ; notice the * standing for the [attribute value] map entries
+           ((cxpath '(** *at* * *text*)) doc-node))) ; notice the * standing for the [attribute value] map entries
 
 ; The next example illustrates using a custom converter as a filter and the fact that attribute collections are themselves nodes (selected via *at*) in cxml.
 ; Select all the attribute values from elements having at least 2 attributes
 (assert (= '("Savings 1" "5/5/2008")
-        ((cxpath (list '.. '*at* (filter-nodes #(>= (count %) 2)) '* '*text*)) doc-node)))
+        ((cxpath (list '** '*at* (filter-nodes #(>= (count %) 2)) '* '*text*)) doc-node)))
+
+
+; parent of attribute text
+(assert (= ((cxpath '(** *at* *)) doc-node)
+		   ((cxpath '(** *at* * *text* ..)) doc-node)))
+
+;; TODO: why are these not equivalent?
+;((cxpath '(** *at* * *text* .. ..*)) doc-node)
+;nil
+;cxpath=> ((cxpath '(** *at* * ..*)) doc-node)
+; ([title "Savings 1"] (account ...
 
 
 ; (load-file "unit-tests.clj") (in-ns 'cxpath)
