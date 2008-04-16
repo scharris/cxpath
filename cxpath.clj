@@ -43,7 +43,6 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 
 (defn converters-for-path 
   [path root-nodes]
-    (let [symbolic-or-tag? (fn [x] (or (symbolic? x) (compound-tag? x)))]
       
       (loop [converters nil
              path (seq path)]
@@ -53,12 +52,10 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             ;; parsing finished
             (nil? path) (reverse converters)
 
-			;; TODO: ..* after .. not working properly (see unit tests at bottom): check optimized logic below, may need to exclude more cases.
-
 		    ;; descendant handler
             (= DESCENDANT-SYM loc-step)
 		      (if (or (nil? (rest path))                     
-                      (not (symbolic-or-tag? (frest path)))  
+                      (not (tag-or-ntype? (frest path)))
                       (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
                 (recur (cons (descendant-or-self xpath-node?) converters)    ; general case
                        (rest path))
@@ -68,7 +65,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 			;; parent handler
             (= PARENT-SYM loc-step)
 			  (if (or (nil? (rest path))                     
-					  (not (symbolic-or-tag? (frest path)))  
+					  (not (tag-or-ntype? (frest path)))  
 					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
 				(recur (cons ((parent (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
 					   (rest path))
@@ -78,7 +75,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             ;; ancestor handler
             (= ANCESTOR-SYM loc-step)
 			  (if (or (nil? (rest path))                     
-					  (not (symbolic-or-tag? (frest path)))  
+					  (not (tag-or-ntype? (frest path)))  
 					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
 				(recur (cons ((ancestor-or-self (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
 					   (rest path))
@@ -87,7 +84,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 			
 
 			;; handler for element-like nodes (including attributes and special elements), and attribute collections
-			(symbolic-or-tag? loc-step)
+			(tag-or-ntype? loc-step)
               (recur (cons (select-kids (ntype?? loc-step)) converters)
                      (rest path))
 
@@ -120,7 +117,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                    ;; general sub-path handler
                    :else
 				     (let [;; selector for the initial substep
-                           selector (if (symbolic-or-tag? fst-sstep)
+                           selector (if (tag-or-ntype? fst-sstep)
                                       (select-kids (ntype?? fst-sstep))
                                       (cxpath fst-sstep)) ; first substep should be a sequence
 						   ;; converters for the remaining substeps, which act only as successive filters on the initial selector output
@@ -137,14 +134,13 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             
             ;; invalid
             :else 
-		      (throw (new java.lang.RuntimeException (str "Invalid path step: " loc-step))))))))
+		      (throw (new java.lang.RuntimeException (str "Invalid path step: " loc-step)))))))
 
 
 (defn expand-ns-prefixes
   [path prefix->uri]
     (if prefix->uri
-      (let [is-namespaceable-symbolic-tag? #(and (symbolic? %)
-                                                 (not (is-syntax? %))
+      (let [is-namespaceable-symbolic-tag? #(and (simple-tag? %)
                                                  (not (special-nonelement-tag? %))
                                                  (not= cxml/DOCROOT-TAG %))
             maybe-expand-tag (fn [tag]

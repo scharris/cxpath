@@ -715,12 +715,8 @@
 (assert (= ((cxpath '(** *at* *)) doc-node)
 		   ((cxpath '(** *at* * *text* ..)) doc-node)))
 
-;; TODO: why are these not equivalent?
-;((cxpath '(** *at* * *text* .. ..*)) doc-node)
-;nil
-;cxpath=> ((cxpath '(** *at* * ..*)) doc-node)
-; ([title "Savings 1"] (account ...
-
+(assert (= ((cxpath '(** *at* * *text* .. ..*)) doc-node)
+           ((cxpath '(** *at* * ..*)) doc-node)))
 
 ; (load-file "unit-tests.clj") (in-ns 'cxpath)
 

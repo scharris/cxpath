@@ -27,8 +27,6 @@
 (clojure/refer 'clojure)
 (load-file "cxml.clj")
 
-; TODO
-; (el * el2 ** el3 .. ..*)
 ; Syntax symbols
 (def DESCENDANT-SYM '**)
 (def PARENT-SYM '..)
@@ -46,7 +44,14 @@
 (def NTYPE-ANY-SYM  '*any*)
 (def NTYPE-DATA-SYM  '*data*)
 
-(defn is-syntax?
+(defn ntype-symbol? [x]
+  (or (= x NTYPE-ELEMENT-SYM)
+      (= x NTYPE-ATTRIBUTES-SYM)
+      (= x NTYPE-TEXT-SYM)
+      (= x NTYPE-ANY-SYM)
+      (= x NTYPE-DATA-SYM)))
+
+(defn syntax-symbol?
   "Tests whether the passed item is one of cxpath's syntax symbols."
   [x]
     (or (= x DESCENDANT-SYM)
@@ -59,29 +64,43 @@
         (= x IDENTICAL-LONG-SYM)
         (= x IDENTICAL-SHORT-SYM)
         (= x NAMESPACE-ID-SYM)
-        (= x NTYPE-ELEMENT-SYM)
-        (= x NTYPE-ATTRIBUTES-SYM)
-        (= x NTYPE-TEXT-SYM)
-        (= x NTYPE-ANY-SYM)
-        (= x NTYPE-DATA-SYM)))
+        (ntype-symbol? x)))
+
 
 ; ------------------------------------------------
 ; tag related functions for element like nodes
 
-(defn symbolic? [x] (or (symbol? x) (keyword? x)))
-
-(defn compound-tag? [x]
-  (and (vector? x)
-       (= 2 (count x))
-       (string? (nth x 0))
-       (symbolic? (nth x 1))))
-
-(defn tag? 
+(defn symbolic? 
+  "Tests whether the passed item is either a symbol or keyword."
   [x]
+    (or (symbol? x)
+        (keyword? x)))
+
+(defn simple-tag?
+  "simple-tag?:: Anything -> Boolean
+A predicate testing whether the passed object is a simple (unqualified) tag.
+A symbol or keyword is considered a tag if it is not a syntax symbol."
+  [x]
+    (and (symbolic? x)
+         (not (syntax-symbol? x))))
+
+(defn compound-tag? 
+  "compound-tag?:: Anything -> Boolean
+A predicate testing whether the passed object is a namespace qualified tag,
+of the form [uri symbol-or-keyword]."
+  [x]
+    (and (vector? x)
+         (= 2 (count x))
+         (string? (nth x 0))
+         (symbolic? (nth x 1))))
+
+(defn tag?
   "tag?:: Anything -> Boolean
-A predicate testing whether the passed thing is a tag.  A tag is either a symbol, keyword, or
-a [uri-string symbol/keyword] pair vector."
-    (or (symbolic? x)
+A predicate testing whether the passed object is a simple or compound tag.
+A tag is either a symbol, keyword, or [uri-string symbol/keyword] pair vector.
+Syntax symbols are not considered tags by this predicate."
+  [x]
+    (or (simple-tag? x)
         (compound-tag? x)))
 
 (defn tag
@@ -90,11 +109,11 @@ Returns the leading symbol/keyword or [namespace symbol/keyword] pair of a tradi
 special-element, or attribute/value pair vector, or nil for any other type of node.
 This function can also be used as a predicate to test for an element-like node."
    [node] 
-     (when (or (seq? node) 
-               (vector? node))
+     (if (or (seq? node) 
+             (vector? node))
        (when-first hd node
-         (when (tag? hd) hd))))
-
+         (if (or (symbolic? hd) ; no need to check for syntax symbols here since this is cxml content
+                 (compound-tag? hd)) hd))))
 
 (defn special-nonelement-tag?
   "Determines whether the passed object is the special tag for processing instructions, comments or entities."
@@ -102,16 +121,26 @@ This function can also be used as a predicate to test for an element-like node."
     (or (= t cxml/PI-TAG)
         (= t cxml/COMMENT-TAG)
         (= t cxml/ENTITY-TAG)))
-  
+
 (defn element?-tag
   "Returns the tag for the node if the node is an element node, including the document root
 and attribute/value pairs, or nil for any other node.  As a predicate this function is 
 identical to the element? function, but more usefully returns the tag instead of true and
 nil instead of false."
-    [node]
+  [node]
     (let [ tag (tag node) ]
-      (if (and tag (not (special-nonelement-tag? tag)))
+      (if (and tag
+               (not (special-nonelement-tag? tag)))
 		tag)))
+
+;; The following is an important function in cxpath.clj for testing whether we can combine two location
+;; steps into one for efficiency.
+(defn tag-or-ntype?
+  "Tests whether its argument is either a tag or a nodetype, and thus suitable for passing to
+the ntype?? function."
+  [x]
+    (or (ntype-symbol? x)
+        (tag? x)))
 
 
 (defn xmlns 
@@ -122,9 +151,7 @@ nil instead of false."
         (el-tag 0)
         nil)))
 
-
 (def tags-equal? =)
-
 
 (defn without-clj-ns 
   "Returns the argument symbol or keyword without its clojure namespace if any."
