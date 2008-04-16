@@ -1,0 +1,3 @@
+- Add ..+ and *+ for proper ancestor and descendant operators.
+- Maybe *text* should be applied recursively to subelements(?)
+- Lazy streams

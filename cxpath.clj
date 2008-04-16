@@ -116,10 +116,11 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                             (rest path))
                    ;; general sub-path handler
                    :else
-				     (let [;; selector for the initial substep
+				     (let [as-path (fn [x] (if (seq? x) x (list x)))
+                           ;; selector for the initial substep
                            selector (if (tag-or-ntype? fst-sstep)
                                       (select-kids (ntype?? fst-sstep))
-                                      (cxpath fst-sstep)) ; first substep should be a sequence
+                                      (cxpath (as-path fst-sstep)))
 						   ;; converters for the remaining substeps, which act only as successive filters on the initial selector output
                            filters (map (fn [sstep] 
                                             (if (integer? sstep) 
