@@ -25,103 +25,126 @@
   <?myapp another processing instruction?>
 </account>")
 
+;; Verify parsing gives expected results
 (assert (= doc-node
 		   (cxml/parse-to-list (new java.io.StringReader xml-str))))
 
 
 ;; Simple element selection
-(def v1 
-	 ((cxpath '(account balance)) doc-node))
-;; ((balance {currency "USD"} "3212.12"))
+(def v1
+	 ((cxpath '(account balance))
+        doc-node))
+;; ==>  ((balance {currency "USD"} "3212.12"))
+
 
 ;; Element wildcard (*)
 (def v2
-	 ((cxpath '(account *)) doc-node))
-;;( (owner "12398")
-;;  (balance {currency "USD"} "3212.12")
-;;  (descr-html "Main " (b "short term savings") " account.")
-;;  (report-separator "  ") )
+	 ((cxpath '(account *)) 
+        doc-node))
+;; ==> ( (owner "12398")
+;;       (balance {currency "USD"} "3212.12")
+;;       (descr-html "Main " (b "short term savings") " account.")
+;;       (report-separator "  ") )
 
 
 ;; *or* operator
 (def v3
-	 ((cxpath '(account (*or* owner balance))) doc-node))
-;; ( (owner "12398") (balance {currency "USD"} "3212.12") )
+	 ((cxpath '(account (*or* owner balance)))
+        doc-node))
+;; ==>  ( (owner "12398") (balance {currency "USD"} "3212.12") )
 	
+
 ;; *not* operator
 (def v4
-	 ((cxpath '(account (*not* owner balance))) doc-node))
-;; ( {title "Savings 1" created "5/5/2008"}  ; [attribute collections are nodes in cxpath, unlike w3c xpath]
-;;	 (descr-html "Main " (b "short term savings") " account.")
-;;	 (report-separator "  ")
-;;	 (*PI* "myapp" "another processing instruction") )
+	 ((cxpath '(account (*not* owner balance)))
+        doc-node))
+;; ==> ( {title "Savings 1" created "5/5/2008"}  ; [attribute collections are nodes in cxpath, unlike w3c xpath]
+;;	     (descr-html "Main " (b "short term savings") " account.")
+;;	     (report-separator "  ")
+;;	     (*PI* "myapp" "another processing instruction") )
 
 
 ;; Text selection
 (def v5 
-	 ((cxpath '(account owner *text*)) doc-node))
-;; ("12398")
+	 ((cxpath '(account owner *text*))
+        doc-node))
+;; ==>  ("12398")
 
 
 ;; Attribute collections
 (def v6 
-	 ((cxpath '(account *at*)) doc-node))
-;; ( {title "Savings 1" created "5/5/2008"} )
+	 ((cxpath '(account *at*))
+        doc-node))
+;; ==> ( {title "Savings 1" created "5/5/2008"} )
+
 
 ;; Attribute "elements" (once descended into the attribute axis, attributes are treated as regular cxml elements)
 (def v7 
-	 ((cxpath '(account *at* *)) doc-node))
-;; ( [title "Savings 1"] [created "5/5/2008"] )
+	 ((cxpath '(account *at* *))
+        doc-node))
+;; ==> ( [title "Savings 1"] [created "5/5/2008"] )
+
 (def v8 
-	 ((cxpath '(account *at* title)) doc-node))
-;; ( [title "Savings 1"] )
+	 ((cxpath '(account *at* title))
+        doc-node))
+;; ==> ( [title "Savings 1"] )
+
+
 
 ;; Attribute values
 (def v9 
-	 ((cxpath '(account *at* title *text*)) doc-node))
-;; ("Savings 1")
+	 ((cxpath '(account *at* title *text*))
+        doc-node))
+;; ==> ("Savings 1")
 
 
 ;; Descendants along child axis (**)
 ;;    - all element descendants of account
 (def v10
-	 ((cxpath '(account ** *)) doc-node))
-;; ( (owner "12398")
-;;   (balance {currency "USD"} "3212.12")
-;;   (descr-html "Main " (b "short term savings") " account.")
-;;   (b "short term savings")
-;;   (report-separator "  ") )
+	 ((cxpath '(account ** *))
+        doc-node))
+;; ==> ( (owner "12398")
+;;       (balance {currency "USD"} "3212.12")
+;;       (descr-html "Main " (b "short term savings") " account.")
+;;       (b "short term savings")
+;;       (report-separator "  ") )
+
 
 ;;    - all attribute nodes in the document
 (def v11
-	 ((cxpath '(** *at* *)) doc-node))
-;; ( [title "Savings 1"] [created "5/5/2008"] [currency "USD"] )
-
+	 ((cxpath '(** *at* *))
+        doc-node))
+;; ==> ( [title "Savings 1"] [created "5/5/2008"] [currency "USD"] )
 
 
 ;; Parent selection (..)
 (def v12
-	 ((cxpath '(** b ..)) doc-node))
-;; ( (descr-html "Main " (b "short term savings") " account.") )
+	 ((cxpath '(** b ..)) 
+        doc-node))
+;; ==> ( (descr-html "Main " (b "short term savings") " account.") )
+
 
 ;; As in w3c XPath, the parent of an attribute "element" is its containing element, not the attribute collection.
 (def v13
-	 ((cxpath '(account *at* title ..)) doc-node))
-;; ( (account ...) )
+	 ((cxpath '(account *at* title ..))
+        doc-node))
+;; ==> ( (account ...) )
 
 
 ;; Ancestor selection (..*)
 (def v14
-	 ((cxpath '(account *at* title ..*)) doc-node))
-;; ( [title "Savings 1"] ; self (think of ..* as meaning "0 or or more applications of ..")
-;;   (account ...)       ; element containing the attribute
-;;   (*TOP* ...) )       ; entire document
+	 ((cxpath '(account *at* title ..*))
+        doc-node))
+;; ==> ( [title "Savings 1"] ; self (think of ..* as meaning "0 or or more applications of ..")
+;;       (account ...)       ; element containing the attribute
+;;       (*TOP* ...) )       ; entire document
 
 
 ;; Mixing some of the above: find any attribute (*) of any ancestor of a currency attribute somewhere under /account.
 (def v15
-	 ((cxpath '(account ** *at* currency ..* *at* *)) doc-node))
-;; ( [currency "USD"] [title "Savings 1"] [created "5/5/2008"] )
+	 ((cxpath '(account ** *at* currency ..* *at* *))
+        doc-node))
+;; ==>  ( [currency "USD"] [title "Savings 1"] [created "5/5/2008"] )
 
 
 ;; Sub-node equality (=)
@@ -131,8 +154,9 @@
 ;; Fetch the balance elements with a value of"3212.12".  This is done by selecting the account/balance/"3212"
 ;; elements themselves, then taking the parent.
 (def v16
-	 ((cxpath '(account balance (= "3212.12") ..)) doc-node))
-;; ( (balance {currency "USD"} "3212.12") )
+	 ((cxpath '(account balance (= "3212.12") ..))
+        doc-node))
+;; ==> ( (balance {currency "USD"} "3212.12") )
 
 
 
@@ -151,23 +175,30 @@
 ;; choose their owner text.  In this example, the subpath is (* (balance *at* currency (= "USD"))), with * as the
 ;; initial selector and (balance ...) as the filter on those selected items (without projection).
 (def v17
-	 ((cxpath '((* (balance *at* currency (= "USD"))) owner *text*)) doc-node))
-;; ("12398")
+	 ((cxpath '((* (balance *at* currency (= "USD"))) owner *text*)) 
+        doc-node))
+;; ==> ("12398")
            
+
 ;; This example is similar but illustrates using two filters in a subpath expression.
-;; Retrieve the descr-html/b elements from any elements having balance and owner subelement values of "3212.12" and "12398".
+;; Retrieve the descr-html/b elements from under any elements having balance text of "3212.12" and and owner text
+;;  of "12398".
 (def v18
-	 ((cxpath '((* (balance (= "3212.12")) (owner (= "12398")) ) descr-html b)) doc-node))
-;; ( (b  "short term savings") )
+	 ((cxpath '((* (balance (= "3212.12")) (owner (= "12398")) ) descr-html b))
+        doc-node))
+;; ==> ( (b  "short term savings") )
 
 ;; Get the currency of the account with a certain balance.
-;; Here ((account balance) ((= "3212.12"))) is a supbath expression.  It will project out account balances (since the head of
-;; the subpath is the cxpath (account balance).  These account balance elements are then filtered by the ((= "3212.12")) cxpath,
-;; to yield the values of the subpath.  The remaining path steps <*at* currency *text*> then select the currency from the subpath's
-;; balance results.
+;; Here ((account balance) ((= "3212.12"))) is a supbath expression.  It will project out account balances (since
+;; the head of the subpath is the cxpath (account balance).  These account balance elements are then filtered by
+;; the ((= "3212.12")) cxpath, to yield the values of the subpath.  The remaining path steps <*at* currency *text*>
+;; after the subpath ends then select the currency from the subpath's balance results.
 (def v19
-	 ((cxpath '(((account balance) ((= "3212.12"))) *at* currency *text*)) doc-node))
-;; ( "USD" )
+	 ((cxpath '(((account balance) ((= "3212.12"))) *at* currency *text*)) 
+        doc-node))
+;; ==> ( "USD" )
+
+
 
 ;; TODO: custom clojure converters
 
