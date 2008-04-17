@@ -667,6 +667,9 @@
 (assert (= (list account-el)
            ((cxpath '(account *at* title ..)) doc-node)))
 
+(assert (= '((ownerid "12398"))
+		   ((cxpath '(account *at* title .. ownerid)) doc-node)))
+
 (assert (= (list '[title "Savings 1"] 
                  account-el
                  doc-node)
@@ -676,9 +679,6 @@
            ((cxpath '(account balance *at* currency ..* *at* *)) doc-node)))
 
 
-; Syntax within a subpath is different from that in the top level. Subpaths have the special form: '(symbol-or-path path*). 
-; The initial symbol-or-path determines the type of nodes returned, whereas the subsequent path* entries are full cxpath paths and are only
-; applied as filters (without projection) to the nodes returned by the first symbol-or-path entry.
 (assert (= '("12398")
            ((cxpath '((* (balance *at* currency (= "USD"))) ownerid *text*)) doc-node)))
 

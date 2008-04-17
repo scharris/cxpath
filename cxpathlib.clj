@@ -28,9 +28,11 @@
 (load-file "cxml.clj")
 
 ; Syntax symbols
-(def DESCENDANT-SYM '**)
+(def DESCENDANT-OR-SELF-SYM '**)
+(def PROPER-DESCENDANT-SYM '*+)
 (def PARENT-SYM '..)
-(def ANCESTOR-SYM '..*)
+(def ANCESTOR-OR-SELF-SYM '..*)
+(def PROPER-ANCESTOR-SYM '..+)
 (def OR-SYM '*or*)
 (def NOT-SYM '*not*)
 (def EQUAL-LONG-SYM 'equal?)
@@ -54,9 +56,11 @@
 (defn syntax-symbol?
   "Tests whether the passed item is one of cxpath's syntax symbols."
   [x]
-    (or (= x DESCENDANT-SYM)
+    (or (= x DESCENDANT-OR-SELF-SYM)
+		(= x PROPER-DESCENDANT-SYM)
         (= x PARENT-SYM)
-        (= x ANCESTOR-SYM)
+        (= x ANCESTOR-OR-SELF-SYM)
+        (= x PROPER-ANCESTOR-SYM)
         (= x OR-SYM)
         (= x NOT-SYM)
         (= x EQUAL-LONG-SYM)

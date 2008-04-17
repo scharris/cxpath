@@ -17,10 +17,14 @@
 ;   - Traditional w3c xpath strings are not supported as location steps.
 ;   - Removed variable bindings everywhere, as they are only needed for tradtional xpath support.
 ;   - New prefix expansion feature allowing prefix/symbol to be expanded to [uri symbol] qualified tags.
-;   - (TODO) New parent, ancestor operators.
+;   - Added support in brief syntax for parent, ancestor, proper ancestor, and proper descendant converters.
+
+;; TODO: A symbol for "any kid" would be nice, then derive descendant symbols from this one by adding * and +.
+;;       This would be more correct than ** and *+, which suggest that the results are elements (except in the *{0} case).
+
 
 (in-ns 'cxpath)
-(clojure/refer 'clojure)
+(clojure/refer 'clojure :exclude '(any))
 
 (load-file "cxml.clj")
 (load-file "cxpathlib.clj")
@@ -28,7 +32,7 @@
 
 (def converters-for-path)
 (def expand-ns-prefixes)
-
+(def any)
 
 (defn cxpath
   "cxpath:: [PathComponent] (,NS_Bindings)? -> Node|Nodelist -> Nodelist
@@ -52,38 +56,37 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             ;; parsing finished
             (nil? path) (reverse converters)
 
-		    ;; descendant handler
-            (= DESCENDANT-SYM loc-step)
-		      (if (or (nil? (rest path))                     
-                      (not (tag-or-ntype? (frest path)))
-                      (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
-                (recur (cons (descendant-or-self xpath-node?) converters)    ; general case
+		    ;; descendant-or-self
+            (= DESCENDANT-OR-SELF-SYM loc-step)
+		      (if (or (not (tag-or-ntype? (frest path)))
+                      (= (frest path) NTYPE-ATTRIBUTES-SYM)) ; attrs nodetype symbol doubles as indicator to switch to attr axis
+				(recur (cons (descendant-or-self any) converters)            ; general case
                        (rest path))
                 (recur (cons (descendant (ntype?? (frest path))) converters) ; optimized case
                        (rrest path)))
 
-			;; parent handler
-            (= PARENT-SYM loc-step)
-			  (if (or (nil? (rest path))                     
-					  (not (tag-or-ntype? (frest path)))  
-					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
-				(recur (cons ((parent (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
-					   (rest path))
-			    (recur (cons ((parent (ntype?? (frest path))) root-nodes) converters)  ; optimized case
-					   (rrest path)))
-			
-            ;; ancestor handler
-            (= ANCESTOR-SYM loc-step)
-			  (if (or (nil? (rest path))                     
-					  (not (tag-or-ntype? (frest path)))  
-					  (= (frest path) NTYPE-ATTRIBUTES-SYM)) 
-				(recur (cons ((ancestor-or-self (ntype?? NTYPE-ANY-SYM)) root-nodes) converters) ; general case
-					   (rest path))
-			    (recur (cons ((ancestor (ntype?? (frest path))) root-nodes) converters)          ; optimized case
-					   (rrest path)))
-			
+			;; proper-descendant
+            (= PROPER-DESCENDANT-SYM loc-step)
+			  ;; == child-nodes + descendant-or-self, which allows reuse of descendant-or-self's optimization case
+			  (recur (cons child-nodes converters)
+					 (cons DESCENDANT-OR-SELF-SYM (rest path)))
 
-			;; handler for element-like nodes (including attributes and special elements), and attribute collections
+			;; ancestor-or-self
+            (= ANCESTOR-OR-SELF-SYM loc-step)
+				(recur (cons ((ancestor-or-self any) root-nodes) converters)
+					   (rest path))
+			
+			;; proper-ancestor
+            (= PROPER-ANCESTOR-SYM loc-step)
+				(recur (cons ((ancestor any) root-nodes) converters)
+					   (rest path))
+			
+			;; parent
+            (= PARENT-SYM loc-step)
+			  (recur (cons ((parent any) root-nodes) converters)
+					 (rest path))
+
+			;; handler for cxml element and special element nodes, and node-type symbols
 			(tag-or-ntype? loc-step)
               (recur (cons (select-kids (ntype?? loc-step)) converters)
                      (rest path))
@@ -160,5 +163,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
              path))
     path))
 
-; (load-file "cxpath.clj")
+(def any (ntype?? NTYPE-ANY-SYM))
+
+; (load-file "cxpath.clj") (in-ns 'cxpath)
 
