@@ -200,9 +200,63 @@
 
 
 
-;; TODO: custom clojure converters
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Namespace support
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: namespace support
+;; Define a mapping of prefixes to uri's.  Not strictly necessary but allows for convenient notation.
+(def ns-uris {nil    "http://some.bank.com/ns",
+              "html" "http://www.w3.org/HTML/1998/html4",
+              "sb"   "http://standards.org/banking"})
 
 
-; (load-file "tutorial.clj") (in-ns 'cxpath)
+;; The (with-xmlns ...) expands tags having namespaces to the form [uri symbol].  Parsing would produce the same (expanded) form.
+(def doc-node-ns 
+     (with-xmlns ns-uris
+        '(*TOP*
+          (*PI* "myapp" "a processing instruction")
+          (account {title "Savings 1" created "5/5/2008"}
+            (owner "12398")
+            (balance {sb/currency "USD"} "3212.12") ; namespace on attribute
+            (descr-html "Main " (html/b "short term savings") " account.") ; different namespace on subelement here
+            (report-separator "  ")
+            (*PI* "myapp" "another processing instruction")))))
+
+;; The true expanded form of the above.
+(assert 
+ (= doc-node-ns
+    '(*TOP* 
+	  (*PI* "myapp" "a processing instruction")
+	  (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+         (["http://some.bank.com/ns" owner] "12398")
+         (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
+         (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
+         (["http://some.bank.com/ns" report-separator] "  ")
+         (*PI* "myapp" "another processing instruction")))))
+
+;; Long form
+(def v20
+     ((cxpath '(["http://some.bank.com/ns" account] ["http://some.bank.com/ns" owner]))
+        doc-node-ns))
+;; ==> ( (["http://some.bank.com/ns" owner] "12398") )
+
+;; Short form of the same query, using prefixes this time passed as second arg to cxpath.
+;; Only the default namespace is used in this case.
+(def v21
+     ((cxpath '(account owner) 
+              ns-uris) 
+        doc-node-ns))
+;; ==> ( (["http://some.bank.com/ns" owner] "12398") )
+
+;; Show an explict namespace prefix, with another namespace defaulting.
+(def v22
+     ((cxpath '(account ** html/b) 
+              ns-uris) 
+        doc-node-ns))
+;; ==> ((["http://www.w3.org/HTML/1998/html4" b] "short term savings"))
+
+
+;; TODO: show custom clojure converters
+
+
+;; (load-file "tutorial.clj") (in-ns 'cxpath)
