@@ -248,7 +248,7 @@
         doc-node-ns))
 ;; ==> ( (["http://some.bank.com/ns" owner] "12398") )
 
-;; Show an explict namespace prefix, with another namespace defaulting.
+;; An explict namespace prefix on one element, with another namespace defaulting.
 (def v22
      ((cxpath '(account ** html/b) 
               ns-uris) 
@@ -256,7 +256,30 @@
 ;; ==> ((["http://www.w3.org/HTML/1998/html4" b] "short term savings"))
 
 
-;; TODO: show custom clojure converters
+;; The next example illustrates using a custom converter as a filter in the middle of a path.
+;; Select all the attribute values from elements having at least 2 attributes.
+(def v23
+     ((cxpath (list '** '*at* (filter-nodes #(>= (count %) 2)) '* '*text*)
+              ns-uris)
+        doc-node-ns))
+;; ==> ( "5/5/2008"  "Savings 1" )
 
+;; The (filter-nodes #(>= (count %) 2)) in the above is a "converter", or a function that transforms a
+;; node or nodelist (the results of the previous parts of the path) to an output nodelist. Here
+;; filter-nodes is just convenient way of building a converter from a predicate.  We could use any Clojure
+;; function here which is a converter, ie. of type Node|NodeList -> NodeList. The built-in path elements
+;; are themselves just shorthand forms for converters.  Most builtin converters implictly select child nodes
+;; of the passed nodes for filtering, transforming, etc: this is not the case for custom converters. They are
+;; given as input the exact nodes produced from the previous parts of the path, and from these may produce
+;; arbitrary nodes as output.  In this case we are filtering the nodes without descending into them in the
+;; custom converter, then descending again in the rest of the path.
+
+
+;; Note: Using keywords instead of symbols in the above path expression would have allowed use of syntax
+;; quote (with symbols syntax quote will apply clojure namespaces which we don't want here).  The syntax
+;; (**, *at*, *text*, etc) may be changed to use keywords instead of symbols for this reason, and/or a 
+;; special replacement for syntax quote may be done instead which doesn't do Clojure namespace lookup.
+;; The xml data itself already supports keywords for tags and attribute names as a parsing option and the
+;; cxpath library already supports both.
 
 ;; (load-file "tutorial.clj") (in-ns 'cxpath)
