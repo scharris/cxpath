@@ -47,16 +47,31 @@
 ;;       (report-separator "  ") )
 
 
-;; *or* operator
+;; |or| operator selects kid nodes that match any number of tags or node types, or which yield results when cxpath paths are applied to them.
+;; Select between two tag alternatives.
 (def v3
-	 ((cxpath '(account (*or* owner balance)))
+	 ((cxpath '(account (|or| owner balance)))
         doc-node))
 ;; ==>  ( (owner "12398") (balance {currency "USD"} "3212.12") )
-	
 
-;; *not* operator
+; |or| can also select nodes based on their general types (*, <a>, <text>, <data>, <any>), or the existence of results in any number of alternative full cxpath subpaths.
+; Below, we select any descendants of account which are either text nodes, an owner element, an element having a currency attribute, or an element having a "b" subelement.
+(def v3a
+	 ((cxpath '(account / (|or| <text> owner (<a> currency) (b))))
+        doc-node))
+;; ==>  ((owner "12398") (balance {currency "USD"} "3212.12") (descr-html "Main " (b "short term savings") " account.") "12398" "3212.12" "Main " " account." "short term savings" "  ")
+
+;; |alt| is like |or|, but subpaths project their results into the result, instead of just filtering.
+;; Notice that the currency attribute itself is yielded this time from the (<a> currency) subpath, instead of the balance element the subpath was applied to.
+(def v3b
+	 ((cxpath '(account / (|alt| <text> owner (<a> currency))))
+        doc-node))
+;; ==>  ( (owner "12398") "12398" "3212.12" "Main " " account." "short term savings" "  " [currency "USD"] n)
+
+
+;; |not| operator
 (def v4
-	 ((cxpath '(account (*not* owner balance)))
+	 ((cxpath '(account (|not| owner balance)))
         doc-node))
 ;; ==> ( {title "Savings 1" created "5/5/2008"}  ; [attribute collections are nodes in cxpath, unlike w3c xpath]
 ;;	     (descr-html "Main " (b "short term savings") " account.")
@@ -66,26 +81,26 @@
 
 ;; Text selection
 (def v5 
-	 ((cxpath '(account owner *text*))
+	 ((cxpath '(account owner <text>))
         doc-node))
 ;; ==>  ("12398")
 
 
 ;; Attribute collections
 (def v6 
-	 ((cxpath '(account *at*))
+	 ((cxpath '(account <a>))
         doc-node))
 ;; ==> ( {title "Savings 1" created "5/5/2008"} )
 
 
 ;; Attribute "elements" (once descended into the attribute axis, attributes are treated as regular cxml elements)
 (def v7 
-	 ((cxpath '(account *at* *))
+	 ((cxpath '(account <a> *))
         doc-node))
 ;; ==> ( [title "Savings 1"] [created "5/5/2008"] )
 
 (def v8 
-	 ((cxpath '(account *at* title))
+	 ((cxpath '(account <a> title))
         doc-node))
 ;; ==> ( [title "Savings 1"] )
 
@@ -93,15 +108,15 @@
 
 ;; Attribute values
 (def v9 
-	 ((cxpath '(account *at* title *text*))
+	 ((cxpath '(account <a> title <text>))
         doc-node))
 ;; ==> ("Savings 1")
 
 
-;; Descendants along child axis (**)
+;; Descendants along child axis (/)
 ;;    - all element descendants of account
 (def v10
-	 ((cxpath '(account ** *))
+	 ((cxpath '(account / *))
         doc-node))
 ;; ==> ( (owner "12398")
 ;;       (balance {currency "USD"} "3212.12")
@@ -112,28 +127,28 @@
 
 ;;    - all attribute nodes in the document
 (def v11
-	 ((cxpath '(** *at* *))
+	 ((cxpath '(/ <a> *))
         doc-node))
 ;; ==> ( [title "Savings 1"] [created "5/5/2008"] [currency "USD"] )
 
 
 ;; Parent selection (..)
 (def v12
-	 ((cxpath '(** b ..)) 
+	 ((cxpath '(/ b ..)) 
         doc-node))
 ;; ==> ( (descr-html "Main " (b "short term savings") " account.") )
 
 
 ;; As in w3c XPath, the parent of an attribute "element" is its containing element, not the attribute collection.
 (def v13
-	 ((cxpath '(account *at* title ..))
+	 ((cxpath '(account <a> title ..))
         doc-node))
 ;; ==> ( (account ...) )
 
 
 ;; Ancestor selection (..*)
 (def v14
-	 ((cxpath '(account *at* title ..*))
+	 ((cxpath '(account <a> title ..*))
         doc-node))
 ;; ==> ( [title "Savings 1"] ; self (think of ..* as meaning "0 or or more applications of ..")
 ;;       (account ...)       ; element containing the attribute
@@ -142,7 +157,7 @@
 
 ;; Mixing some of the above: find any attribute (*) of any ancestor of a currency attribute somewhere under /account.
 (def v15
-	 ((cxpath '(account ** *at* currency ..* *at* *))
+	 ((cxpath '(account / <a> currency ..* <a> *))
         doc-node))
 ;; ==>  ( [currency "USD"] [title "Savings 1"] [created "5/5/2008"] )
 
@@ -172,10 +187,10 @@
 ;; symbol or path in the subpath expression.
 
 ;; Choose any elements having a balance subelement with a currency attribute value of "USD", and from these elements
-;; choose their owner text.  In this example, the subpath is (* (balance *at* currency (= "USD"))), with * as the
+;; choose their owner text.  In this example, the subpath is (* (balance <a> currency (= "USD"))), with * as the
 ;; initial selector and (balance ...) as the filter on those selected items (without projection).
 (def v17
-	 ((cxpath '((* (balance *at* currency (= "USD"))) owner *text*)) 
+	 ((cxpath '((* (balance <a> currency (= "USD"))) owner <text>)) 
         doc-node))
 ;; ==> ("12398")
            
@@ -191,10 +206,10 @@
 ;; Get the currency of the account with a certain balance.
 ;; Here ((account balance) ((= "3212.12"))) is a supbath expression.  It will project out account balances (since
 ;; the head of the subpath is the cxpath (account balance).  These account balance elements are then filtered by
-;; the ((= "3212.12")) cxpath, to yield the values of the subpath.  The remaining path steps <*at* currency *text*>
+;; the ((= "3212.12")) cxpath, to yield the values of the subpath.  The remaining path steps <<a> currency <text>>
 ;; after the subpath ends then select the currency from the subpath's balance results.
 (def v19
-	 ((cxpath '(((account balance) ((= "3212.12"))) *at* currency *text*)) 
+	 ((cxpath '(((account balance) ((= "3212.12"))) <a> currency <text>)) 
         doc-node))
 ;; ==> ( "USD" )
 
@@ -250,7 +265,7 @@
 
 ;; An explict namespace prefix on one element, with another namespace defaulting.
 (def v22
-     ((cxpath '(account ** html/b) 
+     ((cxpath '(account / html/b) 
               ns-uris) 
         doc-node-ns))
 ;; ==> ((["http://www.w3.org/HTML/1998/html4" b] "short term savings"))
@@ -259,7 +274,7 @@
 ;; The next example illustrates using a custom converter as a filter in the middle of a path.
 ;; Select all the attribute values from elements having at least 2 attributes.
 (def v23
-     ((cxpath (list '** '*at* (filter-nodes #(>= (count %) 2)) '* '*text*)
+     ((cxpath (list '/ '<a> (filter-nodes #(>= (count %) 2)) '* '<text>)
               ns-uris)
         doc-node-ns))
 ;; ==> ( "5/5/2008"  "Savings 1" )
@@ -277,7 +292,7 @@
 
 ;; Note: Using keywords instead of symbols in the above path expression would have allowed use of syntax
 ;; quote (with symbols syntax quote will apply clojure namespaces which we don't want here).  The syntax
-;; (**, *at*, *text*, etc) may be changed to use keywords instead of symbols for this reason, and/or a 
+;; (/, <a>, <text>, etc) may be changed to use keywords instead of symbols for this reason, and/or a 
 ;; special replacement for syntax quote may be done instead which doesn't do Clojure namespace lookup.
 ;; The xml data itself already supports keywords for tags and attribute names as a parsing option and the
 ;; cxpath library already supports both.

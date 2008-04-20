@@ -26,25 +26,27 @@
 (in-ns 'cxpath)
 (clojure/refer 'clojure)
 (load-file "cxml.clj")
+(load-file "utils.clj")
+
+
+;; TODO: look for usages of any == (ntype?? '<any>) in cxpath.clj, and replace with nil.  Modify converters to just avoid applying the node test when its not passed.
 
 ; Syntax symbols
-(def DESCENDANT-OR-SELF-SYM '**)
-(def PROPER-DESCENDANT-SYM '*+)
+(def DESCENDANT-OR-SELF-SYM '/)
+(def NODESELF-SYM '.)
 (def PARENT-SYM '..)
 (def ANCESTOR-OR-SELF-SYM '..*)
-(def PROPER-ANCESTOR-SYM '..+)
-(def OR-SYM '*or*)
-(def NOT-SYM '*not*)
-(def EQUAL-LONG-SYM 'equal?)
-(def EQUAL-SHORT-SYM '=)
-(def IDENTICAL-LONG-SYM 'identical?)
-(def IDENTICAL-SHORT-SYM '==)
-(def NAMESPACE-ID-SYM 'ns-id|*)
+(def OR-SYM '|or|)
+(def OR-SUBPATH-PROJECTING-SYM '|alt|)
+(def NOT-SYM '|not|)
+(def EQUAL-SYM '=)
+(def IDENTICAL-SYM '==)
+(def NAMESPACE-ID-SYM '|ns|)
 (def NTYPE-ELEMENT-SYM '*)
-(def NTYPE-ATTRIBUTES-SYM '*at*)
-(def NTYPE-TEXT-SYM '*text*)
-(def NTYPE-ANY-SYM  '*any*)
-(def NTYPE-DATA-SYM  '*data*)
+(def NTYPE-ATTRIBUTES-SYM '<a>)
+(def NTYPE-TEXT-SYM '<text>)
+(def NTYPE-ANY-SYM  '<any>)
+(def NTYPE-DATA-SYM  '<data>)
 
 (defn ntype-symbol? [x]
   (or (= x NTYPE-ELEMENT-SYM)
@@ -57,16 +59,14 @@
   "Tests whether the passed item is one of cxpath's syntax symbols."
   [x]
     (or (= x DESCENDANT-OR-SELF-SYM)
-		(= x PROPER-DESCENDANT-SYM)
+        (= x NODESELF-SYM)
         (= x PARENT-SYM)
         (= x ANCESTOR-OR-SELF-SYM)
-        (= x PROPER-ANCESTOR-SYM)
         (= x OR-SYM)
+        (= x OR-SUBPATH-PROJECTING-SYM)
         (= x NOT-SYM)
-        (= x EQUAL-LONG-SYM)
-        (= x EQUAL-SHORT-SYM)
-        (= x IDENTICAL-LONG-SYM)
-        (= x IDENTICAL-SHORT-SYM)
+        (= x EQUAL-SYM)
+        (= x IDENTICAL-SYM)
         (= x NAMESPACE-ID-SYM)
         (ntype-symbol? x)))
 
@@ -155,7 +155,6 @@ the ntype?? function."
         (el-tag 0)
         nil)))
 
-(def tags-equal? =)
 
 (defn without-clj-ns 
   "Returns the argument symbol or keyword without its clojure namespace if any."
@@ -244,9 +243,6 @@ If the argument is a nodelist then it is returned as is, otherwise a nodelist is
 
 
 
-(defn integer? [x] (instance? clojure.lang.IntegerNum x))
-
-
 ;=============================================================================
 ; A converter is a function
 ;   type Converter = Node|Nodelist -> Nodelist
@@ -300,16 +296,16 @@ and attribute/value pairs (not attribute maps), and false for *PI*, *COMMENT*,
     (boolean (element?-tag node)))
 
 
-(defn ntype-names??
-  "ntype-names??:: [Symbol] -> Node -> Boolean,
-ie ntype-names??:: [Symbol] -> Predicate
+(defn ntype-tags??
+  "ntype-tags??:: [Symbol] -> Node -> Boolean,
+ie ntype-tags??:: [Symbol] -> Predicate
 Takes a list of acceptable node tag symbols as a criterion and returns a function
-which tests nodes for having a tag (beginning symbol) and which is in the list."
+which tests nodes for having a tag and which is in the list."
   [test-tags]
     (fn [node]
         (let [ tag (tag node) ]
 		  (boolean (and tag
-						(some #(tags-equal? tag %) test-tags))))))
+						(some #(= tag %) test-tags))))))
 
 
 (defn ntype??
@@ -319,17 +315,17 @@ Takes a type criterion symbol and returns a function which tests nodes for being
 of the required type.
 The criterion 'crit' is one of the following symbols:
  id     - tests if the Node has the right name (id)
- *a*    - tests if the Node is an attributes map
+ <a>    - tests if the Node is an attributes map
  *      - tests if the Node is an element or attribute/value pair
- *text* - tests if the Node is a text node
- *data* - tests if the Node is a data node 
+ <text> - tests if the Node is a text node
+ <data> - tests if the Node is a data node 
            (text, number, boolean, etc., but not pair)
  *PI*   - tests if the Node is a PI node
  *COMMENT*  - tests if the Node is a COMMENT node
  *ENTITY*   - tests if the Node is a ENTITY node
- *any*      - true for any type of Node"
+ <any>      - true for any type of Node"
   [t]
-    (cond 
+    (cond
      (= t NTYPE-ELEMENT-SYM) element?
      (= t NTYPE-TEXT-SYM) string?
      (= t NTYPE-ANY-SYM) (constantly true)
@@ -338,8 +334,16 @@ The criterion 'crit' is one of the following symbols:
      (= t NTYPE-ATTRIBUTES-SYM) map?
      :else (fn [node]
                (let [ tag (tag node) ]
-                 (boolean (and tag (tags-equal? tag t)))))))
+                 (boolean (and tag (= tag t)))))))
 
+(defn ntype-in??
+  "ntype-in??:: [Symbol] -> Node -> Boolean,
+ie ntype-in??:: [Symbol] -> Predicate
+Takes a list of type criterion symbols and returns a function which tests nodes for being
+of one of the types in the list. See ntype?? for a description of the allowed node types."
+  [ts]
+    (fn [node] (some (fn [t] ((ntype?? t) node))
+                     ts)))
 
 
 (defn ntype-namespace-id??
@@ -541,8 +545,10 @@ produces the union of their results.
 This combinator corresponds to a union, '|' operation for XPath
 location paths."
   [& converters]
-    (fn [n-nl] ; node or nodelist
-		(mapcat #(% n-nl) converters)))
+    (if (= 1 (count converters)) ; optimize single converter case
+      (first converters)
+      (fn [n-nl] ; node or nodelist
+          (mapcat #(% n-nl) converters))))
 
 ; Was: sxml:child-elements
 (defn child-elements

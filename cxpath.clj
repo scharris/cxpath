@@ -1,34 +1,33 @@
-; This code Public Domain.
+; This code is Public Domain.
 ; It's based on SXPath by Oleg Kiselyov, and multiple improvements 
-; implemented by Dmitry Lizorkin.  It has been refactored, modified, 
-; and ported to Clojure from the original Scheme sxml-tools distribution
-; by Steve Harris, available at gmail.com as user steveOfAR.  Comments
-; and bug reports are welcome.
+; implemented by Dmitry Lizorkin.  It has been ported to Clojure,
+; refactored  and extended by Steve Harris.  Comments, questions and
+; bug reports are welcome, please send to steveOfAR at gmail.com.
 ; Links:
 ;   - Oleg's original SXML/SXPath is available at:
 ;         http://okmij.org/ftp/Scheme/xml.html
 ;   - Dmitry Lizorkin's sxml-tools distribution, which includes a modified SXPath distribution, is at:
 ;         http://ssax.sourceforge.net/
+;     This distribution was the starting point for the port to Clojure.
 
-; Differences vs. the original Scheme implementation from sxml-tools:
+; Differences in this Clojure version vs. the original Scheme implementation from sxml-tools:
+;   - Refactored, especially sub-path handling. Converters production has been separated into its own function. Node-reduce used in a couple of key places.
+;   - Added support in brief syntax for parent, ancestor and node-self axes (*).
+;   - More powerful OR operator, now allowing node types and full subpath expressions as existence test filters, as well as the tags supported in the original.
+;   - New projecting OR operator, like the above but with subpaths projecting results instead of just providing a results existence test.
+;   - New prefix expansion feature allowing clojure namespaced symbols or keywords to be expanded to [uri symbol] qualified tags.
 ;   - This version will never return nil, throwing a RuntimeException instead.
-;   - Converters production has been separated into its own function.
-;   - Refactored, especially sub-path handling.  Node-reduce used where possible.
 ;   - Traditional w3c xpath strings are not supported as location steps.
-;   - Removed variable bindings everywhere, as they are only needed for tradtional xpath support.
-;   - New prefix expansion feature allowing prefix/symbol to be expanded to [uri symbol] qualified tags.
-;   - Added support in brief syntax for parent, ancestor, proper ancestor, and proper descendant converters.
-
-;; TODO: A symbol for "any kid" would be nice, then derive descendant symbols from this one by adding * and +.
-;;       This would be more correct than ** and *+, which suggest that the results are elements (except in the *{0} case).
-
+;   - Removed variable bindings everywhere, which were only needed for tradtional xpath support.
+;
+;  (*) The node-self (".") operator is useful at the head of subpath expressions, for filtering incoming nodes without descent.
 
 (in-ns 'cxpath)
-(clojure/refer 'clojure :exclude '(any))
+(clojure/refer 'clojure)
 
 (load-file "cxml.clj")
 (load-file "cxpathlib.clj")
-
+(load-file "utils.clj")
 
 (def converters-for-path)
 (def expand-ns-prefixes)
@@ -56,6 +55,11 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             ;; parsing finished
             (nil? path) (reverse converters)
 
+            ;; node-self (no-op)
+            (= NODESELF-SYM loc-step)
+              (recur converters
+                     (rest path))
+
 		    ;; descendant-or-self
             (= DESCENDANT-OR-SELF-SYM loc-step)
 		      (if (or (not (tag-or-ntype? (frest path)))
@@ -64,21 +68,10 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                        (rest path))
                 (recur (cons (descendant (ntype?? (frest path))) converters) ; optimized case
                        (rrest path)))
-
-			;; proper-descendant
-            (= PROPER-DESCENDANT-SYM loc-step)
-			  ;; == child-nodes + descendant-or-self, which allows reuse of descendant-or-self's optimization case
-			  (recur (cons child-nodes converters)
-					 (cons DESCENDANT-OR-SELF-SYM (rest path)))
-
+			
 			;; ancestor-or-self
             (= ANCESTOR-OR-SELF-SYM loc-step)
 				(recur (cons ((ancestor-or-self any) root-nodes) converters)
-					   (rest path))
-			
-			;; proper-ancestor
-            (= PROPER-ANCESTOR-SYM loc-step)
-				(recur (cons ((ancestor any) root-nodes) converters)
 					   (rest path))
 			
 			;; parent
@@ -98,20 +91,28 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 		  
 		    ;; sequence handler
             (seq loc-step)
-		      (let [ fst-sstep (first loc-step) ]
+		      (let [fst-sstep (first loc-step)]
 			    (cond
-			       (= OR-SYM fst-sstep)
-				     (recur (cons (select-kids (ntype-names?? (rest loc-step))) converters)
-					   	    (rest path))
+                   (= OR-SUBPATH-PROJECTING-SYM fst-sstep)
+                     (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
+                           ntypes-conv (if ntypes (select-kids (ntype-in?? ntypes))) ; converter filtering by node type alternatives
+                           paths-conv (if paths (apply node-or (map cxpath paths)))  ; converter unioning results of cxpath path expressions
+                           conv (apply node-or (cons-if ntypes-conv (cons-if paths-conv nil)))] ; union results of the converters
+                       (recur (cons conv converters)
+                              (rest path)))
+                   (= OR-SYM fst-sstep)
+                     (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
+                           preds (cons-if* ntypes (ntype-in?? ntypes)          ; node type alternatives predicate
+                                   (map #(as-predicate (cxpath %)) paths))]    ; cxpath path expressions as predicates
+                       (recur (cons (select-kids (or-predicates preds)) converters) ; or-together all the predicates
+                              (rest path)))
                    (= NOT-SYM fst-sstep)
-				     (recur (cons (select-kids (complement (ntype-names?? (rest loc-step)))) converters)
+				     (recur (cons (select-kids (complement (ntype-tags?? (rest loc-step)))) converters)
                             (rest path))
-				   (or (= EQUAL-LONG-SYM  fst-sstep)
-                       (= EQUAL-SHORT-SYM fst-sstep))
+                   (= EQUAL-SYM  fst-sstep)
 				     (recur (cons (select-kids (apply node-equal? (rest loc-step))) converters)
                             (rest path))
-                   (or (= IDENTICAL-LONG-SYM fst-sstep)
-                       (= IDENTICAL-SHORT-SYM fst-sstep))
+                   (= IDENTICAL-SYM fst-sstep)
                      (recur (cons (select-kids (apply node-eq? (rest loc-step))) converters)
                             (rest path))
 				   (= NAMESPACE-ID-SYM fst-sstep)
@@ -166,4 +167,6 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 (def any (ntype?? NTYPE-ANY-SYM))
 
 ; (load-file "cxpath.clj") (in-ns 'cxpath)
+
+
 

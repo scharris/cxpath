@@ -217,38 +217,38 @@
 (assert (not (element? '())))
 (assert (not (element? nil)))
 
-; ntype-names??
-(assert ((ntype-names?? '(myel other)) '(myel "text")))
-(assert ((ntype-names?? '(attr1)) '[attr1 "val1"]))
-(assert (not ((ntype-names?? '(myel other)) '(*TOP* "text"))))
-(assert (not ((ntype-names?? '()) '(*TOP* "text"))))
-(assert (not ((ntype-names?? '(myel)) "text")))
-(assert (not ((ntype-names?? '(myel)) 2)))
-(assert (not ((ntype-names?? '()) nil)))
-(assert (not ((ntype-names?? '()) '())))
-(assert (not ((ntype-names?? nil) nil)))
+; ntype-tags??
+(assert ((ntype-tags?? '(myel other)) '(myel "text")))
+(assert ((ntype-tags?? '(attr1)) '[attr1 "val1"]))
+(assert (not ((ntype-tags?? '(myel other)) '(*TOP* "text"))))
+(assert (not ((ntype-tags?? '()) '(*TOP* "text"))))
+(assert (not ((ntype-tags?? '(myel)) "text")))
+(assert (not ((ntype-tags?? '(myel)) 2)))
+(assert (not ((ntype-tags?? '()) nil)))
+(assert (not ((ntype-tags?? '()) '())))
+(assert (not ((ntype-tags?? nil) nil)))
 
 ; ntype??
 (assert ((ntype?? 'myel) '(myel "text")))
 (assert ((ntype?? 'myattr) '[myattr "text"]))
 (assert ((ntype?? '*) '(myel "text")))
 (assert ((ntype?? '*) '[myattr "text"]))
-(assert ((ntype?? '*at*) {'attr1 "val1" 'attr2 "val2"}))
+(assert ((ntype?? '<a>) {'attr1 "val1" 'attr2 "val2"}))
 (assert ((ntype?? '*TOP*) '(*TOP* (myel "text"))))
 (assert ((ntype?? '*PI*) '(*PI* "app" "text")))
 (assert ((ntype?? '*COMMENT*) '(*COMMENT* "text")))
 (assert ((ntype?? '*ENTITY*) '(*ENTITY* "text")))
-(assert ((ntype?? '*text*) "text"))
-(assert ((ntype?? '*data*) "text"))
-(assert ((ntype?? '*data*) 2)) ; non-string atomic data values aren't really produced by the parser but are supported anyway
-(assert ((ntype?? '*data*) true))
-(assert ((ntype?? '*any*) 2))
-(assert (not ((ntype?? '*text*) '(myel "text"))))
-(assert (not ((ntype?? '*data*) '(myel "text"))))
+(assert ((ntype?? '<text>) "text"))
+(assert ((ntype?? '<data>) "text"))
+(assert ((ntype?? '<data>) 2)) ; non-string atomic data values aren't really produced by the parser but are supported anyway
+(assert ((ntype?? '<data>) true))
+(assert ((ntype?? '<any>) 2))
+(assert (not ((ntype?? '<text>) '(myel "text"))))
+(assert (not ((ntype?? '<data>) '(myel "text"))))
 (assert (not ((ntype?? '*) "text")))
-(assert (not ((ntype?? '*data*) ['myattr "text"])))
-(assert (not ((ntype?? '*text*) ['myattr "text"])))
-(assert (not ((ntype?? '*data*) ['myattr "text"])))
+(assert (not ((ntype?? '<data>) ['myattr "text"])))
+(assert (not ((ntype?? '<text>) ['myattr "text"])))
+(assert (not ((ntype?? '<data>) ['myattr "text"])))
 
 ; ntype-namespace-id??
 (assert ((ntype-namespace-id?? "http://a/b/c") '(["http://a/b/c" myel] "text")))
@@ -359,38 +359,38 @@
 
 ; select-kids
 (assert (= '("text1")
-		   ((select-kids (ntype?? '*text*)) '(el1 "text1"))))
+		   ((select-kids (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= '({attr1 "val1"})
-		   ((select-kids (ntype?? '*at*)) '(el1 {attr1 "val1"} "text1"))))
+		   ((select-kids (ntype?? '<a>)) '(el1 {attr1 "val1"} "text1"))))
 
 (assert (= '((*PI* "myapp" "a processing instruction"))
            ((select-kids (ntype?? '*PI*)) doc-node)))
 
 (assert (= nil
-	 ((select-kids (ntype?? '*data*)) doc-node)))
+	 ((select-kids (ntype?? '<data>)) doc-node)))
 
 (assert (= '("myapp" "some p.i." "text1" "text2")
-	 ((select-kids (ntype?? '*data*)) nodelist)))
+	 ((select-kids (ntype?? '<data>)) nodelist)))
 
 (assert (= '("myapp" "some p.i." {a "a"} "text1" (nested1 "nestedtext1"  (nested1a "nestedtext1a")) "text2" (nested2 "nestedtext2"))
-	 ((select-kids (ntype?? '*any*)) nodelist)))
+	 ((select-kids (ntype?? '<any>)) nodelist)))
 
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a")) (nested2 "nestedtext2"))
 	 ((select-kids (ntype?? '*)) nodelist)))
 
 (assert (= '({a "a"})
-	 ((select-kids (ntype?? '*at*)) nodelist)))
+	 ((select-kids (ntype?? '<a>)) nodelist)))
 
 ; node-join
 (assert (= '("12398" "3212.12" "Main " " account." "  ")
-	 ((node-join (select-kids (ntype-names?? '(account)))
+	 ((node-join (select-kids (ntype-tags?? '(account)))
 				 (select-kids (ntype?? '*))
-				 (select-kids (ntype?? '*text*))) doc-node)))
+				 (select-kids (ntype?? '<text>))) doc-node)))
 
 (assert (= '("nestedtext1" "nestedtext2")
 		   ((node-join (select-kids (ntype?? '*)) 
-					   (select-kids (ntype?? '*text*))) nodelist)))
+					   (select-kids (ntype?? '<text>))) nodelist)))
 
 (assert (= '((nested1a "nestedtext1a"))
 		   ((node-join (select-kids (ntype?? '*)) 
@@ -399,17 +399,17 @@
 (assert (= '("nestedtext1a")
 		   ((node-join (select-kids (ntype?? '*))
 					   (select-kids (ntype?? '*))
-					   (select-kids (ntype?? '*text*))) nodelist)))
+					   (select-kids (ntype?? '<text>))) nodelist)))
 ; node-reduce
 (assert (= '("12398" "3212.12" "Main " " account." "  ")
-		   ((node-reduce (select-kids (ntype-names?? '(account)))
+		   ((node-reduce (select-kids (ntype-tags?? '(account)))
 						 (select-kids (ntype?? '*))
-						 (select-kids (ntype?? '*text*))) doc-node)))
+						 (select-kids (ntype?? '<text>))) doc-node)))
 
 
 (assert (= '("nestedtext1" "nestedtext2")
 		   ((node-reduce (select-kids (ntype?? '*)) 
-						 (select-kids (ntype?? '*text*))) nodelist)))
+						 (select-kids (ntype?? '<text>))) nodelist)))
 
 (assert (= '((nested1a "nestedtext1a"))
 		   ((node-reduce (select-kids (ntype?? '*)) 
@@ -418,14 +418,14 @@
 (assert (= '("nestedtext1a")
 		   ((node-reduce (select-kids (ntype?? '*))
 						 (select-kids (ntype?? '*))
-						 (select-kids (ntype?? '*text*))) nodelist)))
+						 (select-kids (ntype?? '<text>))) nodelist)))
 
 ; node-or
 (assert (= '((el2 "text2" (nested2 "nestedtext2"))
 			 (*PI* "myapp" "some p.i."))
-		   ((node-or (filter-nodes (ntype-names?? '(el2))) 
-					 (filter-nodes (ntype-names?? '(*PI*)))
-					 (filter-nodes (ntype-names?? '(*ENTITY*)))) nodelist)))
+		   ((node-or (filter-nodes (ntype-tags?? '(el2))) 
+					 (filter-nodes (ntype-tags?? '(*PI*)))
+					 (filter-nodes (ntype-tags?? '(*ENTITY*)))) nodelist)))
 
 (assert (= (list '(*PI* "myapp" "a processing instruction")
 				 account-el)
@@ -439,16 +439,16 @@
   
 ; node-closure
 (assert (= '("12398" "3212.12" "Main " " account." "  " "short term savings")
-		   ((node-closure (ntype?? '*text*)) doc-node)))
+		   ((node-closure (ntype?? '<text>)) doc-node)))
 
 (assert (= '("pi-text" "el-text")
-		   ((node-closure (ntype?? '*text*)) '((*PI* "pi-text") (el "el-text")))))
+		   ((node-closure (ntype?? '<text>)) '((*PI* "pi-text") (el "el-text")))))
 
 (assert (= '("myapp" "some p.i." "text1" "text2" "nestedtext1" "nestedtext2" "nestedtext1a")
-		   ((node-closure (ntype?? '*text*)) nodelist)))
+		   ((node-closure (ntype?? '<text>)) nodelist)))
 
 (assert (= '({a "a"})
-		   ((node-closure (ntype?? '*at*)) nodelist)))
+		   ((node-closure (ntype?? '<a>)) nodelist)))
 
 
 ; sxml-node?
@@ -471,19 +471,19 @@
 
 ; child
 (assert (= '("text1")
-		   ((child (ntype?? '*text*)) '(el1 "text1"))))
+		   ((child (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= nil
 		   ((child (ntype?? '*PI*)) doc-node))) ; special elements ignored
 
 (assert (= nil
-		   ((child (ntype?? '*data*)) doc-node)))
+		   ((child (ntype?? '<data>)) doc-node)))
 
 (assert (= '("text1" "text2")
-		   ((child (ntype?? '*data*)) nodelist)))
+		   ((child (ntype?? '<data>)) nodelist)))
 
 (assert (= '("text1" (nested1 "nestedtext1"  (nested1a "nestedtext1a")) "text2" (nested2 "nestedtext2")) ; attr collection ignored
-		   ((child (ntype?? '*any*)) nodelist)))
+		   ((child (ntype?? '<any>)) nodelist)))
 
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a")) (nested2 "nestedtext2"))
 		   ((child (ntype?? '*)) nodelist)))
@@ -517,14 +517,14 @@
 
 (assert (= (list account-el
 				 doc-node)
-		   (((ancestor (ntype?? '*any*)) doc-node) '(ownerid "12398"))))
+		   (((ancestor (ntype?? '<any>)) doc-node) '(ownerid "12398"))))
 
 (assert (= (list account-el
 				 doc-node)
-		   (((ancestor (ntype?? '*any*)) doc-node) '[title "Savings 1"])))
+		   (((ancestor (ntype?? '<any>)) doc-node) '[title "Savings 1"])))
 
 (assert (= nil
-		   (((ancestor (ntype?? '*any*)) doc-node) '{title "Savings 1" created "5/5/2008"}))) ; no ancestors for attribute collections
+		   (((ancestor (ntype?? '<any>)) doc-node) '{title "Savings 1" created "5/5/2008"}))) ; no ancestors for attribute collections
 
 
 
@@ -539,7 +539,7 @@
 			     '(ownerid "12398") 
 				 account-el
 				 doc-node)
-		   (((ancestor-or-self (ntype?? '*any*)) doc-node) "12398")))
+		   (((ancestor-or-self (ntype?? '<any>)) doc-node) "12398")))
 
 (assert (= (list '(ownerid "12398") 
 				 account-el
@@ -547,22 +547,22 @@
 				 '(balance {currency "USD"} "3212.12")
 				 account-el
 				 doc-node)
-		   (((ancestor-or-self (ntype?? '*any*)) doc-node) '((ownerid "12398") (balance {currency "USD"} "3212.12")))))
+		   (((ancestor-or-self (ntype?? '<any>)) doc-node) '((ownerid "12398") (balance {currency "USD"} "3212.12")))))
 
 
 ; descendant
 
 (assert (= '("text1")
-		   ((descendant (ntype?? '*text*)) '(el1 "text1"))))
+		   ((descendant (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= nil
 		   ((descendant (ntype?? '*PI*)) doc-node))) ; special elements ignored
 
 (assert (= '("12398" "3212.12" "Main " "short term savings" " account." "  ")
-		   ((descendant (ntype?? '*data*)) doc-node)))
+		   ((descendant (ntype?? '<data>)) doc-node)))
 
 (assert (= '("text1" "nestedtext1" "nestedtext1a" "text2" "nestedtext2")
-		   ((descendant (ntype?? '*data*)) nodelist)))
+		   ((descendant (ntype?? '<data>)) nodelist)))
 
 (assert (= '("text1" 
 			 (nested1 "nestedtext1" (nested1a "nestedtext1a"))
@@ -572,7 +572,7 @@
 			 "text2"
 			 (nested2 "nestedtext2")
 			 "nestedtext2")
-		   ((descendant (ntype?? '*any*)) nodelist)))
+		   ((descendant (ntype?? '<any>)) nodelist)))
 
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a")) (nested1a "nestedtext1a") (nested2 "nestedtext2"))
 		   ((descendant (ntype?? '*)) nodelist)))
@@ -580,19 +580,19 @@
 ; descendant-or-self
 
 (assert (= '("text1")
-		   ((descendant-or-self (ntype?? '*text*)) '(el1 "text1"))))
+		   ((descendant-or-self (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= '((el1 "text1") "text1")
-		   ((descendant-or-self (ntype?? '*any*)) '(el1 "text1"))))
+		   ((descendant-or-self (ntype?? '<any>)) '(el1 "text1"))))
 
 (assert (= nil
 		   ((descendant-or-self (ntype?? '*PI*)) doc-node))) ; special elements ignored
 
 (assert (= '("12398" "3212.12" "Main " "short term savings" " account." "  ")
-		   ((descendant-or-self (ntype?? '*data*)) doc-node)))
+		   ((descendant-or-self (ntype?? '<data>)) doc-node)))
 
 (assert (= '("text1" "nestedtext1" "nestedtext1a" "text2" "nestedtext2")
-		   ((descendant-or-self (ntype?? '*data*)) nodelist)))
+		   ((descendant-or-self (ntype?? '<data>)) nodelist)))
 
 				
 (assert (= '((el1 {a "a"} "text1" (nested1 "nestedtext1" (nested1a "nestedtext1a")))
@@ -605,7 +605,7 @@
 			 "text2"
 			 (nested2 "nestedtext2")
 			 "nestedtext2")
-		   ((descendant-or-self (ntype?? '*any*)) nodelist)))
+		   ((descendant-or-self (ntype?? '<any>)) nodelist)))
 
 (assert (= '((el1 {a "a"} "text1" (nested1 "nestedtext1" (nested1a "nestedtext1a")))
 			 (nested1 "nestedtext1" (nested1a "nestedtext1a"))
@@ -615,8 +615,8 @@
 		   ((descendant-or-self (ntype?? '*)) nodelist)))
 
 ;; expand-ns-prefixes
-(assert (= '(["http://etc" el] el (*not* ["http://etc" el] el (el ["http://etc" el])) el ["http://etc" b])
-           (expand-ns-prefixes '(h/el el (*not* h/el el (el h/el)) el h/b) {"h" "http://etc"})))
+(assert (= '(["http://etc" el] el (|not| ["http://etc" el] el (el ["http://etc" el])) el ["http://etc" b])
+           (expand-ns-prefixes '(h/el el (|not| h/el el (el h/el)) el h/b) {"h" "http://etc"})))
 
 
 
@@ -639,48 +639,52 @@
 		   ((cxpath '(account ownerid) ns-uris) doc-node-ns)))
 
 (assert (= '((ownerid "12398") (balance {currency "USD"} "3212.12"))
-		   ((cxpath '(account (*or* ownerid balance))) doc-node)))
+		   ((cxpath '(account (|or| ownerid balance))) doc-node)))
 
 (assert (= '((["http://some.bank.com/ns" ownerid] "12398") (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"))
-		   ((cxpath '(account (*or* ownerid balance)) ns-uris) doc-node-ns)))
+		   ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
+
+(assert (= '({title "Savings 1", created "5/5/2008"} (ownerid "12398") (balance {currency "USD"} "3212.12"))
+		   ((cxpath '(account (|or| <a> <data> ownerid (. <a> currency)))) doc-node)))
+
 
 (assert (= (with-xmlns ns-uris '((ownerid "12398")  (balance {sb/currency "USD"} "3212.12")))
-		   ((cxpath '(account (*or* ownerid balance)) ns-uris) doc-node-ns)))
+		   ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
 
 
 (assert (= '({title "Savings 1" created "5/5/2008"}
 			 (descr-html "Main " (b "short term savings") " account.")
 			 (report-separator "  ")
 			 (*PI* "myapp" "another processing instruction"))
-   		   ((cxpath '(account (*not* ownerid balance))) doc-node)))
+   		   ((cxpath '(account (|not| ownerid balance))) doc-node)))
 
 ; TODO: better syntax for this?  Syntax quote seems to garble things too much by inserting namespaces on symbols: how to handle this?
 (assert (= '((descr-html "Main " (b "short term savings") " account.") (report-separator "  "))
-           ((cxpath (concat '(account (*not* ownerid balance)) (list (filter-nodes element?)))) doc-node)))
+           ((cxpath (concat '(account (|not| ownerid balance)) (list (filter-nodes element?)))) doc-node)))
 
 (assert (= '("12398")
-		   ((cxpath '(account ownerid *text*)) doc-node)))
+		   ((cxpath '(account ownerid <text>)) doc-node)))
 
 (assert (= '("Savings 1")
-           ((cxpath '(account *at* title *text*)) doc-node)))
+           ((cxpath '(account <a> title <text>)) doc-node)))
 
 (assert (= (list account-el)
-           ((cxpath '(account *at* title ..)) doc-node)))
+           ((cxpath '(account <a> title ..)) doc-node)))
 
 (assert (= '((ownerid "12398"))
-		   ((cxpath '(account *at* title .. ownerid)) doc-node)))
+		   ((cxpath '(account <a> title .. ownerid)) doc-node)))
 
 (assert (= (list '[title "Savings 1"] 
                  account-el
                  doc-node)
-           ((cxpath '(account *at* title ..*)) doc-node)))
+           ((cxpath '(account <a> title ..*)) doc-node)))
 
 (assert (= '([currency "USD"] [title "Savings 1"] [created "5/5/2008"])
-           ((cxpath '(account balance *at* currency ..* *at* *)) doc-node)))
+           ((cxpath '(account balance <a> currency ..* <a> *)) doc-node)))
 
 
 (assert (= '("12398")
-           ((cxpath '((* (balance *at* currency (= "USD"))) ownerid *text*)) doc-node)))
+           ((cxpath '((* (balance <a> currency (= "USD"))) ownerid <text>)) doc-node)))
 
 (assert (= '((b  "short term savings"))
 		   ((cxpath '((* (balance (= "3212.12")) (ownerid (= "12398")) ) descr-html b)) doc-node)))
@@ -688,9 +692,9 @@
 
 ; TODO: again, how to use syntax quote here?
 (assert (= (list account-el)
-           ((cxpath (list '* '(*at* (title (= "Savings 1"))) 'title ((parent identity) doc-node))) doc-node)))
+           ((cxpath (list '* '(<a> (title (= "Savings 1"))) 'title ((parent identity) doc-node))) doc-node)))
 (assert (= '((ownerid "12398"))
-           ((cxpath '((* (*at* title (= "Savings 1")) (balance)) ownerid)) doc-node)))
+           ((cxpath '((* (<a> title (= "Savings 1")) (balance)) ownerid)) doc-node)))
 
 ; Select the ownerid text of some element having a balance sub-element with particular text (lookup owner by balance).
 (assert (= '((ownerid "12398"))
@@ -698,25 +702,25 @@
 
 ; Retrieve all attribute collections in the document
 (assert (= '({title "Savings 1" created "5/5/2008"} {currency "USD"})
-           ((cxpath '(** *at*)) doc-node)))
+           ((cxpath '(/ <a>)) doc-node)))
 
 ; Attribute/value pair vectors are treated as subelements of an attributes collection once that axis is entered.
 ; Retrieve all attribute values in the document
 (assert (= '("Savings 1" "5/5/2008" "USD")
-           ((cxpath '(** *at* * *text*)) doc-node))) ; notice the * standing for the [attribute value] map entries
+           ((cxpath '(/ <a> * <text>)) doc-node))) ; notice the * standing for the [attribute value] map entries
 
-; The next example illustrates using a custom converter as a filter and the fact that attribute collections are themselves nodes (selected via *at*) in cxml.
+; The next example illustrates using a custom converter as a filter and the fact that attribute collections are themselves nodes (selected via <a>) in cxml.
 ; Select all the attribute values from elements having at least 2 attributes
 (assert (= '("Savings 1" "5/5/2008")
-        ((cxpath (list '** '*at* (filter-nodes #(>= (count %) 2)) '* '*text*)) doc-node)))
+        ((cxpath (list '/ '<a> (filter-nodes #(>= (count %) 2)) '* '<text>)) doc-node)))
 
 
 ; parent of attribute text
-(assert (= ((cxpath '(** *at* *)) doc-node)
-		   ((cxpath '(** *at* * *text* ..)) doc-node)))
+(assert (= ((cxpath '(/ <a> *)) doc-node)
+		   ((cxpath '(/ <a> * <text> ..)) doc-node)))
 
-(assert (= ((cxpath '(** *at* * *text* .. ..*)) doc-node)
-           ((cxpath '(** *at* * ..*)) doc-node)))
+(assert (= ((cxpath '(/ <a> * <text> .. ..*)) doc-node)
+           ((cxpath '(/ <a> * ..*)) doc-node)))
 
 ; (load-file "unit-tests.clj") (in-ns 'cxpath)
 
