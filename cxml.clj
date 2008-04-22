@@ -41,54 +41,54 @@
 
 (defn content-handler [opts create-el finalize-el add-to-el]
   (let [add-pending-char-data (fn [add-to-el]
-	      (set! *current* (add-to-el *current* (str *pending-chars*)))
-		  (set! *pending-chars* nil))
+          (set! *current* (add-to-el *current* (str *pending-chars*)))
+          (set! *pending-chars* nil))
 
-		ns-prefix (fn [#^String qname]
-		  (let [ colon-ix (. qname (indexOf (int \:))) ]
-			(if (= -1 colon-ix)
-			  nil
-			  (. qname (substring (int 0) colon-ix)))))
+        ns-prefix (fn [#^String qname]
+          (let [ colon-ix (. qname (indexOf (int \:))) ]
+            (if (= -1 colon-ix)
+              nil
+              (. qname (substring (int 0) colon-ix)))))
 
-		
-		all-whitespace? (fn [chars-array start len] 
-		  (loop [i (+ start (dec len))]
-			(if (< i start)
-			  true
-			  (if (not (. Character (isWhitespace (aget chars-array i))))
-				false
-				(recur (dec i))))))
+        
+        all-whitespace? (fn [chars-array start len] 
+          (loop [i (+ start (dec len))]
+            (if (< i start)
+              true
+              (if (not (. Character (isWhitespace (aget chars-array i))))
+                false
+                (recur (dec i))))))
 
-		string-nonempty? (fn [#^String s] (if s (pos? (. s (length))) false))
+        string-nonempty? (fn [#^String s] (if s (pos? (. s (length))) false))
 
-		make-attr-tagsym (if (:keyword-attributes? opts) keyword symbol)
-		make-el-tagsym (if (:keyword-tags? opts) keyword symbol)]
+        make-attr-tagsym (if (:keyword-attributes? opts) keyword symbol)
+        make-el-tagsym (if (:keyword-tags? opts) keyword symbol)]
 
-	 (new clojure.lang.XMLHandler
+     (new clojure.lang.XMLHandler
        (proxy [ContentHandler] []
 
          (startElement [uri local-name q-name #^Attributes atts]
             (let [add-attr (fn [ats-map i]
-							   (let [at-sym (make-attr-tagsym (. atts (getLocalName i)))
-									 at-uri (let [u (. atts (getURI i))] (if (string-nonempty? u) u))
-									 at-prefix (if at-uri (ns-prefix (. atts (getQName i))))
-									 at (if at-uri 
-										  (with-meta [at-uri at-sym] {:xmlns-prefix at-prefix})   ; ns-qualified attribute
-										  at-sym)                                                 ; unqualified attribute
-									 at-val (. atts (getValue i))]
-								 (assoc ats-map at at-val)))
+                               (let [at-sym (make-attr-tagsym (. atts (getLocalName i)))
+                                     at-uri (let [u (. atts (getURI i))] (if (string-nonempty? u) u))
+                                     at-prefix (if at-uri (ns-prefix (. atts (getQName i))))
+                                     at (if at-uri 
+                                          (with-meta [at-uri at-sym] {:xmlns-prefix at-prefix})   ; ns-qualified attribute
+                                          at-sym)                                                 ; unqualified attribute
+                                     at-val (. atts (getValue i))]
+                                 (assoc ats-map at at-val)))
 
-				  attrs (reduce add-attr nil (range 0 (. atts (getLength))))
+                  attrs (reduce add-attr nil (range 0 (. atts (getLength))))
 
-				  tag (let [sym (make-el-tagsym local-name)]
-						(if (string-nonempty? uri)
-						  (with-meta [uri sym] {:xmlns-prefix (ns-prefix q-name)})
-						  sym))
+                  tag (let [sym (make-el-tagsym local-name)]
+                        (if (string-nonempty? uri)
+                          (with-meta [uri sym] {:xmlns-prefix (ns-prefix q-name)})
+                          sym))
                  
-				  new-el (let [e (create-el tag)] 
-						   (if attrs 
-							 (add-to-el e attrs)
-							 e))]
+                  new-el (let [e (create-el tag)] 
+                           (if attrs 
+                             (add-to-el e attrs)
+                             e))]
                  
             (when *pending-chars*
                (let [ignore (and (:ignore-whitespace-between-elements? opts)
@@ -147,10 +147,10 @@
            nil)
          
 
-		 (startDocument [])
+         (startDocument [])
          (endDocument [])
-		 (startPrefixMapping [prefix uri])
-		 (endPrefixMapping [prefix])
+         (startPrefixMapping [prefix uri])
+         (endPrefixMapping [prefix])
          (setDocumentLocator [locator])))))
        
 
@@ -158,7 +158,7 @@
 (defn parse-impl
   ([s opts create-el finalize-el add-to-el]
    (let [ parser-factory (doto (. SAXParserFactory (newInstance)) (setNamespaceAware true))
-		  parser (. parser-factory (newSAXParser)) ]
+          parser (. parser-factory (newSAXParser)) ]
      (binding [*stack* nil
                *current* (create-el DOCROOT-TAG)
                *state* nil
@@ -169,7 +169,7 @@
 
 (def default-opts { :ignore-whitespace-between-elements? true
                     :keyword-attributes? false
-				    :keyword-tags false } )
+                    :keyword-tags false } )
 
 (defn parse-to-list
   ([s] (parse-to-list s default-opts))
@@ -201,7 +201,7 @@
   <report-separator>  </report-separator>
   <?myapp another processing instruction?>
 </account>"
-		xml-str-ns
+        xml-str-ns
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?myapp a processing instruction?>
 <account title=\"Savings 1\" created='5/5/2008' xmlns=\"http://some.bank.com/ns\">
@@ -211,92 +211,92 @@
   <report-separator>  </report-separator>
   <?myapp another processing instruction?>
 </account>"]
-		
+        
    (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str))
-			  '(*TOP*
-				  (*PI* "myapp" "a processing instruction")
-				  (account {title "Savings 1" created "5/5/2008"}
-				    (ownerid "12398")
-					(balance {currency "USD"} "3212.12")
-					(descr-html "Main " (b "short term savings") " account.")
-					(report-separator "  ")
-					(*PI* "myapp" "another processing instruction")))))
+              '(*TOP*
+                  (*PI* "myapp" "a processing instruction")
+                  (account {title "Savings 1" created "5/5/2008"}
+                    (ownerid "12398")
+                    (balance {currency "USD"} "3212.12")
+                    (descr-html "Main " (b "short term savings") " account.")
+                    (report-separator "  ")
+                    (*PI* "myapp" "another processing instruction")))))
    
    (assert (= (cxml/parse-to-vector (new java.io.StringReader xml-str))
-			  '[*TOP*
-				  [*PI* "myapp" "a processing instruction"]
-				  [account {title "Savings 1" created "5/5/2008"}
-				    [ownerid "12398"]
-					[balance {currency "USD"} "3212.12"]
-					[descr-html "Main " [b "short term savings"] " account."]
-					[report-separator "  "]
-					[*PI* "myapp" "another processing instruction"]]]))
+              '[*TOP*
+                  [*PI* "myapp" "a processing instruction"]
+                  [account {title "Savings 1" created "5/5/2008"}
+                    [ownerid "12398"]
+                    [balance {currency "USD"} "3212.12"]
+                    [descr-html "Main " [b "short term savings"] " account."]
+                    [report-separator "  "]
+                    [*PI* "myapp" "another processing instruction"]]]))
 
    
    (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str-ns))
-			  '(*TOP* 
-				(*PI* "myapp" "a processing instruction")
-				(["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
-				   (["http://some.bank.com/ns" ownerid] "12398")
-				   (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
-				   (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
-				   (["http://some.bank.com/ns" report-separator] "  ")
-				   (*PI* "myapp" "another processing instruction")))))
+              '(*TOP* 
+                (*PI* "myapp" "a processing instruction")
+                (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+                   (["http://some.bank.com/ns" ownerid] "12398")
+                   (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
+                   (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
+                   (["http://some.bank.com/ns" report-separator] "  ")
+                   (*PI* "myapp" "another processing instruction")))))
 
    (assert (= (cxml/parse-to-vector (new java.io.StringReader xml-str-ns))
-			  '[*TOP* 
-				[*PI* "myapp" "a processing instruction"]
-				[["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
-				   [["http://some.bank.com/ns" ownerid] "12398"]
-				   [["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"]
-				   [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."]
-				   [["http://some.bank.com/ns" report-separator] "  "]
-				   [*PI* "myapp" "another processing instruction"]]]))
+              '[*TOP* 
+                [*PI* "myapp" "a processing instruction"]
+                [["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+                   [["http://some.bank.com/ns" ownerid] "12398"]
+                   [["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"]
+                   [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."]
+                   [["http://some.bank.com/ns" report-separator] "  "]
+                   [*PI* "myapp" "another processing instruction"]]]))
 
    
    (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str)
-								  {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true})
-			  '(*TOP*
-				(*PI* "myapp" "a processing instruction")
-				(:account {:created "5/5/2008", :title "Savings 1"} 
-				 (:ownerid "12398")
-				 (:balance {:currency "USD"} "3212.12")
-				 (:descr-html "Main " (:b "short term savings") " account.")
-				 (:report-separator "  ")
-				 (*PI* "myapp" "another processing instruction")))))
+                                  {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true})
+              '(*TOP*
+                (*PI* "myapp" "a processing instruction")
+                (:account {:created "5/5/2008", :title "Savings 1"} 
+                 (:ownerid "12398")
+                 (:balance {:currency "USD"} "3212.12")
+                 (:descr-html "Main " (:b "short term savings") " account.")
+                 (:report-separator "  ")
+                 (*PI* "myapp" "another processing instruction")))))
 
    (assert (=  (cxml/parse-to-vector (new java.io.StringReader xml-str)
-									 {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true})
-			  '[*TOP*
-				[*PI* "myapp" "a processing instruction"]
-				[:account {:created "5/5/2008", :title "Savings 1"} 
-				 [:ownerid "12398"]
-				 [:balance {:currency "USD"} "3212.12"]
-				 [:descr-html "Main " [:b "short term savings"] " account."]
-				 [:report-separator "  "]
-				 [*PI* "myapp" "another processing instruction"]]]))
+                                     {:keyword-attributes? true :keyword-tags? true :ignore-whitespace-between-elements? true})
+              '[*TOP*
+                [*PI* "myapp" "a processing instruction"]
+                [:account {:created "5/5/2008", :title "Savings 1"} 
+                 [:ownerid "12398"]
+                 [:balance {:currency "USD"} "3212.12"]
+                 [:descr-html "Main " [:b "short term savings"] " account."]
+                 [:report-separator "  "]
+                 [*PI* "myapp" "another processing instruction"]]]))
 
 
    (assert (= (cxml/parse-to-list (new java.io.StringReader xml-str-ns)
-								  {:keyword-attributes? true})
-			  '(*TOP* 
-				(*PI* "myapp" "a processing instruction") 
-				(["http://some.bank.com/ns" account] {:created "5/5/2008", :title "Savings 1"} "\n  " 
-				   (["http://some.bank.com/ns" ownerid] "12398") "\n  "
-				   (["http://some.bank.com/ns" balance] {["http://standards.org/banking" :currency] "USD"} "3212.12") "\n  "
-				   (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.") "\n  "
-				   (["http://some.bank.com/ns" report-separator] "  ") "\n  "
-				   (*PI* "myapp" "another processing instruction") "\n"))))
+                                  {:keyword-attributes? true})
+              '(*TOP* 
+                (*PI* "myapp" "a processing instruction") 
+                (["http://some.bank.com/ns" account] {:created "5/5/2008", :title "Savings 1"} "\n  " 
+                   (["http://some.bank.com/ns" ownerid] "12398") "\n  "
+                   (["http://some.bank.com/ns" balance] {["http://standards.org/banking" :currency] "USD"} "3212.12") "\n  "
+                   (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.") "\n  "
+                   (["http://some.bank.com/ns" report-separator] "  ") "\n  "
+                   (*PI* "myapp" "another processing instruction") "\n"))))
 
    (assert (= (cxml/parse-to-vector (new java.io.StringReader xml-str-ns)
-									{:keyword-attributes? true})
-			  '[*TOP* 
-				[*PI* "myapp" "a processing instruction"] 
-				[["http://some.bank.com/ns" account] {:created "5/5/2008", :title "Savings 1"} "\n  " 
-				   [["http://some.bank.com/ns" ownerid] "12398"] "\n  "
-				   [["http://some.bank.com/ns" balance] {["http://standards.org/banking" :currency] "USD"} "3212.12"] "\n  "
-				   [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."] "\n  "
-				   [["http://some.bank.com/ns" report-separator] "  "] "\n  "
-				   [*PI* "myapp" "another processing instruction"] "\n"]]))))
+                                    {:keyword-attributes? true})
+              '[*TOP* 
+                [*PI* "myapp" "a processing instruction"] 
+                [["http://some.bank.com/ns" account] {:created "5/5/2008", :title "Savings 1"} "\n  " 
+                   [["http://some.bank.com/ns" ownerid] "12398"] "\n  "
+                   [["http://some.bank.com/ns" balance] {["http://standards.org/banking" :currency] "USD"} "3212.12"] "\n  "
+                   [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."] "\n  "
+                   [["http://some.bank.com/ns" report-separator] "  "] "\n  "
+                   [*PI* "myapp" "another processing instruction"] "\n"]]))))
 
 ; (load-file "cxml.clj")

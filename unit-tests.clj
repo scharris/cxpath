@@ -12,13 +12,13 @@
 
 
 (def doc-node '(*TOP*
-				  (*PI* "myapp" "a processing instruction")
-				  (account {title "Savings 1" created "5/5/2008"}
-				    (ownerid "12398")
-					(balance {currency "USD"} "3212.12")
-					(descr-html "Main " (b "short term savings") " account.")
-					(report-separator "  ")
-					(*PI* "myapp" "another processing instruction"))))
+                  (*PI* "myapp" "a processing instruction")
+                  (account {title "Savings 1" created "5/5/2008"}
+                    (ownerid "12398")
+                    (balance {currency "USD"} "3212.12")
+                    (descr-html "Main " (b "short term savings") " account.")
+                    (report-separator "  ")
+                    (*PI* "myapp" "another processing instruction"))))
 
 (def ns-uris {nil    "http://some.bank.com/ns",
               "html" "http://www.w3.org/HTML/1998/html4",
@@ -30,63 +30,63 @@
                       (*PI* "myapp" "a processing instruction")
                       (account {title "Savings 1" created "5/5/2008"}
                         (ownerid "12398")
-						(balance {sb/currency "USD"} "3212.12") ; namespace on attribute
-						(descr-html "Main " (html/b "short term savings") " account.") ; different namespace on subelement here
-						(report-separator "  ")
-						(*PI* "myapp" "another processing instruction")))))
+                        (balance {sb/currency "USD"} "3212.12") ; namespace on attribute
+                        (descr-html "Main " (html/b "short term savings") " account.") ; different namespace on subelement here
+                        (report-separator "  ")
+                        (*PI* "myapp" "another processing instruction")))))
 
 ; Test that the with-xmlns function used above properly expands the namespace prefixes
 (assert (= doc-node-ns
-		   '(*TOP* 
-			  (*PI* "myapp" "a processing instruction")
-			  (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
-				 (["http://some.bank.com/ns" ownerid] "12398")
-				 (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
-				 (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
-				 (["http://some.bank.com/ns" report-separator] "  ")
-				 (*PI* "myapp" "another processing instruction")))))
+           '(*TOP* 
+              (*PI* "myapp" "a processing instruction")
+              (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+                 (["http://some.bank.com/ns" ownerid] "12398")
+                 (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
+                 (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
+                 (["http://some.bank.com/ns" report-separator] "  ")
+                 (*PI* "myapp" "another processing instruction")))))
 
 (def doc-node-ns-v (with-xmlns ns-uris
                     '[*TOP*
                       [*PI* "myapp" "a processing instruction"]
                       [account {title "Savings 1" created "5/5/2008"}
                         [ownerid "12398"]
-						[balance {sb/currency "USD"} "3212.12"] ; namespace on attribute
-						[descr-html "Main " [html/b "short term savings"] " account."] ; different namespace on subelement here
-						[report-separator "  "]
-						[*PI* "myapp" "another processing instruction"]]]))
+                        [balance {sb/currency "USD"} "3212.12"] ; namespace on attribute
+                        [descr-html "Main " [html/b "short term savings"] " account."] ; different namespace on subelement here
+                        [report-separator "  "]
+                        [*PI* "myapp" "another processing instruction"]]]))
 
 (assert (= doc-node-ns-v
-		   '[*TOP* 
-			  [*PI* "myapp" "a processing instruction"]
-			  [["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
-			    [["http://some.bank.com/ns" ownerid] "12398"]
-				[["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"]
-				[["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."]
-				[["http://some.bank.com/ns" report-separator] "  "]
-				[*PI* "myapp" "another processing instruction"]]]))
+           '[*TOP* 
+              [*PI* "myapp" "a processing instruction"]
+              [["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+                [["http://some.bank.com/ns" ownerid] "12398"]
+                [["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"]
+                [["http://some.bank.com/ns" descr-html] "Main " [["http://www.w3.org/HTML/1998/html4" b] "short term savings"] " account."]
+                [["http://some.bank.com/ns" report-separator] "  "]
+                [*PI* "myapp" "another processing instruction"]]]))
 
 
 (def nodelist '((*PI* "myapp" "some p.i.")
-				(el1 {a "a"} "text1" 
-					 (nested1 "nestedtext1" (nested1a "nestedtext1a")))
-				(el2 "text2" 
-					 (nested2 "nestedtext2"))))
+                (el1 {a "a"} "text1" 
+                     (nested1 "nestedtext1" (nested1a "nestedtext1a")))
+                (el2 "text2" 
+                     (nested2 "nestedtext2"))))
 
 (def account-el '(account {title "Savings 1" created "5/5/2008"} 
-				   (ownerid "12398")
-				   (balance {currency "USD"} "3212.12")
-				   (descr-html "Main " (b "short term savings") " account.")
-				   (report-separator "  ") (*PI* "myapp" "another processing instruction")))
+                   (ownerid "12398")
+                   (balance {currency "USD"} "3212.12")
+                   (descr-html "Main " (b "short term savings") " account.")
+                   (report-separator "  ") (*PI* "myapp" "another processing instruction")))
 
 (def account-el-ns
-	 (with-xmlns ns-uris
-				 '(account {title "Savings 1" created "5/5/2008"}
-				    (ownerid "12398")
-					(balance {sb/currency "USD"} "3212.12") ; namespace on attribute
-					(descr-html "Main " (html/b "short term savings") " account.") ; different namespace on subelement here
-					(report-separator "  ")
-					(*PI* "myapp" "another processing instruction"))))
+     (with-xmlns ns-uris
+                 '(account {title "Savings 1" created "5/5/2008"}
+                    (ownerid "12398")
+                    (balance {sb/currency "USD"} "3212.12") ; namespace on attribute
+                    (descr-html "Main " (html/b "short term savings") " account.") ; different namespace on subelement here
+                    (report-separator "  ")
+                    (*PI* "myapp" "another processing instruction"))))
 
 ; Parsing
 
@@ -115,18 +115,18 @@
 
 
 (assert (= doc-node
-		   (cxml/parse-to-list (new java.io.StringReader xml-str))))
+           (cxml/parse-to-list (new java.io.StringReader xml-str))))
 
   
 (assert (= '[*TOP*
-			 [*PI* "myapp" "a processing instruction"]
-			 [account {title "Savings 1" created "5/5/2008"}
-			   [ownerid "12398"]
-			   [balance {currency "USD"} "3212.12"]
-			   [descr-html "Main " [b "short term savings"] " account."]
-			   [report-separator "  "]
-			   [*PI* "myapp" "another processing instruction"]]]
-		   (cxml/parse-to-vector (new java.io.StringReader xml-str))))
+             [*PI* "myapp" "a processing instruction"]
+             [account {title "Savings 1" created "5/5/2008"}
+               [ownerid "12398"]
+               [balance {currency "USD"} "3212.12"]
+               [descr-html "Main " [b "short term savings"] " account."]
+               [report-separator "  "]
+               [*PI* "myapp" "another processing instruction"]]]
+           (cxml/parse-to-vector (new java.io.StringReader xml-str))))
 
 
 (assert (= doc-node-ns
@@ -135,18 +135,18 @@
 
 ; Keyword tags and attributes not supported for now, as keywords don't allow attaching the namespace uri as metadata.
 ;(assert (= '[*TOP*
-;			 [*PI* "myapp" "a processing instruction"]
-;			 [:account {:title "Savings 1" :created "5/5/2008"}
-;			   [:ownerid "12398"]
-;			   [:balance {:currency "USD"} "3212.12"]
-;			   [:descr-html "Main " [:b "short term savings"] " account."]
-;			   [:report-separator "  "]
-;			   [*PI* "myapp" "another processing instruction"]]]
-;		   (cxml/parse-to-vector (new java.io.StringReader xml-str) {:keyword-attributes? true :keyword-tags? true})))
+;            [*PI* "myapp" "a processing instruction"]
+;            [:account {:title "Savings 1" :created "5/5/2008"}
+;              [:ownerid "12398"]
+;              [:balance {:currency "USD"} "3212.12"]
+;              [:descr-html "Main " [:b "short term savings"] " account."]
+;              [:report-separator "  "]
+;              [*PI* "myapp" "another processing instruction"]]]
+;          (cxml/parse-to-vector (new java.io.StringReader xml-str) {:keyword-attributes? true :keyword-tags? true})))
 
 ; tag
 (assert (= 'myel
-		   (tag '(myel "text"))))
+           (tag '(myel "text"))))
 (assert (= '["http://a/b/c" el]
            (tag '(["http://a/b/c" el] "text"))))
 (assert (= '["http://a/b/c" el]
@@ -154,19 +154,19 @@
 (assert (= nil
            (tag '(["http://a/b/c" el strange] "text"))))
 (assert (= '*PI*
-		   (tag '(*PI* "myapp" "text"))))
+           (tag '(*PI* "myapp" "text"))))
 (assert (= 'myattr
-		   (tag ['myattr "text"])))
+           (tag ['myattr "text"])))
 (assert (= nil
-		   (tag "text")))
+           (tag "text")))
 (assert (= nil
-		   (tag 2)))
+           (tag 2)))
 (assert (= nil
-		   (tag false)))
+           (tag false)))
 
 ; element?-tag
 (assert (= 'myel
-		   (element?-tag '(myel "text"))))
+           (element?-tag '(myel "text"))))
 (assert (= '["http://a/b/c" el]
            (element?-tag '(["http://a/b/c" el] "text"))))
 (assert (= '["http://a/b/c" el]
@@ -174,13 +174,13 @@
 (assert (= '*TOP*
            (element?-tag '(*TOP* (el "text")))))
 (assert (= nil
-		   (element?-tag '(*PI* "myapp" "processing instruction"))))
+           (element?-tag '(*PI* "myapp" "processing instruction"))))
 (assert (= nil
-		   (tag "text")))
+           (tag "text")))
 (assert (= nil
-		   (tag 2)))
+           (tag 2)))
 (assert (= nil
-		   (tag false)))
+           (tag false)))
 
 ; nodelist?
 (assert (nodelist? '((el "text"))))
@@ -197,7 +197,7 @@
 
 ; as-nodelist
 (assert (= (as-nodelist '(el "text"))
-		   '((el "text"))))
+           '((el "text"))))
 
 ; empty-nodelist?
 (assert (empty-nodelist? '()))
@@ -305,150 +305,150 @@
   
   ; take-nodes-until
   (assert (= '((el1 "text1"))
-			 ((take-nodes-until (fn [node] (= 'el2 (first node)))) two-els-nodelist)))
+             ((take-nodes-until (fn [node] (= 'el2 (first node)))) two-els-nodelist)))
   (assert (= two-els-nodelist
-			 ((take-nodes-until (fn [node] (= 'el3 (first node)))) two-els-nodelist)))
+             ((take-nodes-until (fn [node] (= 'el3 (first node)))) two-els-nodelist)))
   (assert (= nil
-			 ((take-nodes-until (fn [node] (= 'el3 (first node)))) '())))
+             ((take-nodes-until (fn [node] (= 'el3 (first node)))) '())))
   (assert (= nil
-			 ((take-nodes-until (fn [node] (= 'el3 (first node)))) nil)))
+             ((take-nodes-until (fn [node] (= 'el3 (first node)))) nil)))
   (assert (= nil
-			 ((take-nodes-until (fn [node] (= 'el1 (first node)))) '((el1 "text1")))))
+             ((take-nodes-until (fn [node] (= 'el1 (first node)))) '((el1 "text1")))))
   ; take-nodes-after
   (assert (= '((el2 "text2"))
-			 ((take-nodes-after (fn [node] (= 'el1 (first node)))) two-els-nodelist)))
+             ((take-nodes-after (fn [node] (= 'el1 (first node)))) two-els-nodelist)))
   (assert (= nil
-			 ((take-nodes-after (fn [node] (= 'el2 (first node)))) two-els-nodelist)))
+             ((take-nodes-after (fn [node] (= 'el2 (first node)))) two-els-nodelist)))
   (assert (= nil
-			 ((take-nodes-after (fn [node] (= 'el3 (first node)))) two-els-nodelist)))
+             ((take-nodes-after (fn [node] (= 'el3 (first node)))) two-els-nodelist)))
   (assert (= nil
-			 ((take-nodes-after (fn [node] (= 'el3 (first node)))) '())))
+             ((take-nodes-after (fn [node] (= 'el3 (first node)))) '())))
   (assert (= nil
-			 ((take-nodes-after (fn [node] (= 'el3 (first node)))) nil)))
+             ((take-nodes-after (fn [node] (= 'el3 (first node)))) nil)))
   
   ; map-union
   (assert (= '((el1 "text1") (el2 "text2") (el2 "text2"))
-			 (map-union (fn [n] (if (= 'el1 (first n)) (list n) (list n n)))
-						two-els-nodelist)))
+             (map-union (fn [n] (if (= 'el1 (first n)) (list n) (list n n)))
+                        two-els-nodelist)))
   (assert (= '((el2 "text2") (el2 "text2"))
-			 (map-union (fn [n] (if (= 'el1 (first n)) nil (list n n)))
-						two-els-nodelist)))
+             (map-union (fn [n] (if (= 'el1 (first n)) nil (list n n)))
+                        two-els-nodelist)))
   (assert (= '((el2 "text2") (el2 "text2"))
-			 (map-union (fn [n] (if (= 'el1 (first n)) '() (list n n)))
-						two-els-nodelist)))
+             (map-union (fn [n] (if (= 'el1 (first n)) '() (list n n)))
+                        two-els-nodelist)))
   (assert (= '((el2 "text2") (el2 "text2"))
-			 (map-union (fn [n] (if (= 'el1 (first n)) nil (list n n)))
-						two-els-nodelist)))
+             (map-union (fn [n] (if (= 'el1 (first n)) nil (list n n)))
+                        two-els-nodelist)))
   (assert (= nil
-			 (map-union (fn [n] (if (= 'el1 (first n)) (list n) (list n n)))
-						'())))
+             (map-union (fn [n] (if (= 'el1 (first n)) (list n) (list n n)))
+                        '())))
   (assert (= nil     
-			 (map-union (fn [n] (if (= 'el1 (first n)) (list n) (list n n)))
-						nil)))
+             (map-union (fn [n] (if (= 'el1 (first n)) (list n) (list n n)))
+                        nil)))
   ; node-reverse
   (assert (= '((el2 "text2") (el1 "text1"))
-			 (node-reverse two-els-nodelist)))
+             (node-reverse two-els-nodelist)))
   (assert (= '((el1 "text1"))
-			 (node-reverse '((el1 "text1")))))
+             (node-reverse '((el1 "text1")))))
   (assert (= nil
-			 (node-reverse '())))
+             (node-reverse '())))
   (assert (= nil
-			 (node-reverse nil)))
+             (node-reverse nil)))
 )
 
 
 ; select-kids
 (assert (= '("text1")
-		   ((select-kids (ntype?? '<text>)) '(el1 "text1"))))
+           ((select-kids (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= '({attr1 "val1"})
-		   ((select-kids (ntype?? '<a>)) '(el1 {attr1 "val1"} "text1"))))
+           ((select-kids (ntype?? '<a>)) '(el1 {attr1 "val1"} "text1"))))
 
 (assert (= '((*PI* "myapp" "a processing instruction"))
            ((select-kids (ntype?? '*PI*)) doc-node)))
 
 (assert (= nil
-	 ((select-kids (ntype?? '<data>)) doc-node)))
+     ((select-kids (ntype?? '<data>)) doc-node)))
 
 (assert (= '("myapp" "some p.i." "text1" "text2")
-	 ((select-kids (ntype?? '<data>)) nodelist)))
+     ((select-kids (ntype?? '<data>)) nodelist)))
 
 (assert (= '("myapp" "some p.i." {a "a"} "text1" (nested1 "nestedtext1"  (nested1a "nestedtext1a")) "text2" (nested2 "nestedtext2"))
-	 ((select-kids (ntype?? '<any>)) nodelist)))
+     ((select-kids (ntype?? '<any>)) nodelist)))
 
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a")) (nested2 "nestedtext2"))
-	 ((select-kids (ntype?? '*)) nodelist)))
+     ((select-kids (ntype?? '*)) nodelist)))
 
 (assert (= '({a "a"})
-	 ((select-kids (ntype?? '<a>)) nodelist)))
+     ((select-kids (ntype?? '<a>)) nodelist)))
 
 ; node-join
 (assert (= '("12398" "3212.12" "Main " " account." "  ")
-	 ((node-join (select-kids (ntype-tags?? '(account)))
-				 (select-kids (ntype?? '*))
-				 (select-kids (ntype?? '<text>))) doc-node)))
+     ((node-join (select-kids (ntype-tags?? '(account)))
+                 (select-kids (ntype?? '*))
+                 (select-kids (ntype?? '<text>))) doc-node)))
 
 (assert (= '("nestedtext1" "nestedtext2")
-		   ((node-join (select-kids (ntype?? '*)) 
-					   (select-kids (ntype?? '<text>))) nodelist)))
+           ((node-join (select-kids (ntype?? '*)) 
+                       (select-kids (ntype?? '<text>))) nodelist)))
 
 (assert (= '((nested1a "nestedtext1a"))
-		   ((node-join (select-kids (ntype?? '*)) 
-					   (select-kids (ntype?? '*))) nodelist)))
+           ((node-join (select-kids (ntype?? '*)) 
+                       (select-kids (ntype?? '*))) nodelist)))
   
 (assert (= '("nestedtext1a")
-		   ((node-join (select-kids (ntype?? '*))
-					   (select-kids (ntype?? '*))
-					   (select-kids (ntype?? '<text>))) nodelist)))
+           ((node-join (select-kids (ntype?? '*))
+                       (select-kids (ntype?? '*))
+                       (select-kids (ntype?? '<text>))) nodelist)))
 ; node-reduce
 (assert (= '("12398" "3212.12" "Main " " account." "  ")
-		   ((node-reduce (select-kids (ntype-tags?? '(account)))
-						 (select-kids (ntype?? '*))
-						 (select-kids (ntype?? '<text>))) doc-node)))
+           ((node-reduce (select-kids (ntype-tags?? '(account)))
+                         (select-kids (ntype?? '*))
+                         (select-kids (ntype?? '<text>))) doc-node)))
 
 
 (assert (= '("nestedtext1" "nestedtext2")
-		   ((node-reduce (select-kids (ntype?? '*)) 
-						 (select-kids (ntype?? '<text>))) nodelist)))
+           ((node-reduce (select-kids (ntype?? '*)) 
+                         (select-kids (ntype?? '<text>))) nodelist)))
 
 (assert (= '((nested1a "nestedtext1a"))
-		   ((node-reduce (select-kids (ntype?? '*)) 
-						 (select-kids (ntype?? '*))) nodelist)))
+           ((node-reduce (select-kids (ntype?? '*)) 
+                         (select-kids (ntype?? '*))) nodelist)))
   
 (assert (= '("nestedtext1a")
-		   ((node-reduce (select-kids (ntype?? '*))
-						 (select-kids (ntype?? '*))
-						 (select-kids (ntype?? '<text>))) nodelist)))
+           ((node-reduce (select-kids (ntype?? '*))
+                         (select-kids (ntype?? '*))
+                         (select-kids (ntype?? '<text>))) nodelist)))
 
 ; node-or
 (assert (= '((el2 "text2" (nested2 "nestedtext2"))
-			 (*PI* "myapp" "some p.i."))
-		   ((node-or (filter-nodes (ntype-tags?? '(el2))) 
-					 (filter-nodes (ntype-tags?? '(*PI*)))
-					 (filter-nodes (ntype-tags?? '(*ENTITY*)))) nodelist)))
+             (*PI* "myapp" "some p.i."))
+           ((node-or (filter-nodes (ntype-tags?? '(el2))) 
+                     (filter-nodes (ntype-tags?? '(*PI*)))
+                     (filter-nodes (ntype-tags?? '(*ENTITY*)))) nodelist)))
 
 (assert (= (list '(*PI* "myapp" "a processing instruction")
-				 account-el)
-		   ((node-or (select-kids (ntype?? '*PI*))
-					 (select-kids (ntype?? '*)))  doc-node)))
+                 account-el)
+           ((node-or (select-kids (ntype?? '*PI*))
+                     (select-kids (ntype?? '*)))  doc-node)))
 
 ; child-elements
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a"))
-			 (nested2 "nestedtext2"))
-		   (child-elements nodelist)))
+             (nested2 "nestedtext2"))
+           (child-elements nodelist)))
   
 ; node-closure
 (assert (= '("12398" "3212.12" "Main " " account." "  " "short term savings")
-		   ((node-closure (ntype?? '<text>)) doc-node)))
+           ((node-closure (ntype?? '<text>)) doc-node)))
 
 (assert (= '("pi-text" "el-text")
-		   ((node-closure (ntype?? '<text>)) '((*PI* "pi-text") (el "el-text")))))
+           ((node-closure (ntype?? '<text>)) '((*PI* "pi-text") (el "el-text")))))
 
 (assert (= '("myapp" "some p.i." "text1" "text2" "nestedtext1" "nestedtext2" "nestedtext1a")
-		   ((node-closure (ntype?? '<text>)) nodelist)))
+           ((node-closure (ntype?? '<text>)) nodelist)))
 
 (assert (= '({a "a"})
-		   ((node-closure (ntype?? '<a>)) nodelist)))
+           ((node-closure (ntype?? '<a>)) nodelist)))
 
 
 ; sxml-node?
@@ -458,161 +458,161 @@
 
 ; attr-list
 (assert (=  (set '([b "b"] [a "a"]))
-			(set (attr-list '(el {a "a" b "b"} "text")))))
+            (set (attr-list '(el {a "a" b "b"} "text")))))
 
 ; attr-map
 (assert (=  '{a "a" b "b"}
-			(attr-map '(el {a "a" b "b"} "text"))))
+            (attr-map '(el {a "a" b "b"} "text"))))
 
 ; attribute
 (assert (= '([attr1 "val1"])
-		   ((attribute #(= 'attr1 (first %))) '(el {attr1 "val1" attr2 "val2"} "text"))))
+           ((attribute #(= 'attr1 (first %))) '(el {attr1 "val1" attr2 "val2"} "text"))))
 
 
 ; child
 (assert (= '("text1")
-		   ((child (ntype?? '<text>)) '(el1 "text1"))))
+           ((child (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= nil
-		   ((child (ntype?? '*PI*)) doc-node))) ; special elements ignored
+           ((child (ntype?? '*PI*)) doc-node))) ; special elements ignored
 
 (assert (= nil
-		   ((child (ntype?? '<data>)) doc-node)))
+           ((child (ntype?? '<data>)) doc-node)))
 
 (assert (= '("text1" "text2")
-		   ((child (ntype?? '<data>)) nodelist)))
+           ((child (ntype?? '<data>)) nodelist)))
 
 (assert (= '("text1" (nested1 "nestedtext1"  (nested1a "nestedtext1a")) "text2" (nested2 "nestedtext2")) ; attr collection ignored
-		   ((child (ntype?? '<any>)) nodelist)))
+           ((child (ntype?? '<any>)) nodelist)))
 
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a")) (nested2 "nestedtext2"))
-		   ((child (ntype?? '*)) nodelist)))
+           ((child (ntype?? '*)) nodelist)))
 
 
 ; parent
 
 (assert (= '((ownerid "12398"))
-		   (((parent (ntype?? '*)) doc-node) "12398")))
+           (((parent (ntype?? '*)) doc-node) "12398")))
 
 (assert (= '((ownerid "12398")
-			 (balance {currency "USD"} "3212.12"))
-		   (((parent (ntype?? '*)) doc-node) '("12398" "3212.12"))))
+             (balance {currency "USD"} "3212.12"))
+           (((parent (ntype?? '*)) doc-node) '("12398" "3212.12"))))
 
 (assert (= (list account-el)
-		   (((parent (ntype?? '*)) doc-node) '(report-separator "  "))))
+           (((parent (ntype?? '*)) doc-node) '(report-separator "  "))))
 
 
 (assert (= (list '(balance {currency "USD"} "3212.12") 
-				 account-el)
-		   (((parent (ntype?? '*)) doc-node) '([currency "USD"] [title "Savings 1"]))))
+                 account-el)
+           (((parent (ntype?? '*)) doc-node) '([currency "USD"] [title "Savings 1"]))))
 
 
 ; ancestor
 
 (assert (= (list '(ownerid "12398") 
-				 account-el
-				 doc-node)
-		   (((ancestor (ntype?? '*)) doc-node) "12398")))
+                 account-el
+                 doc-node)
+           (((ancestor (ntype?? '*)) doc-node) "12398")))
 
 
 (assert (= (list account-el
-				 doc-node)
-		   (((ancestor (ntype?? '<any>)) doc-node) '(ownerid "12398"))))
+                 doc-node)
+           (((ancestor (ntype?? '<any>)) doc-node) '(ownerid "12398"))))
 
 (assert (= (list account-el
-				 doc-node)
-		   (((ancestor (ntype?? '<any>)) doc-node) '[title "Savings 1"])))
+                 doc-node)
+           (((ancestor (ntype?? '<any>)) doc-node) '[title "Savings 1"])))
 
 (assert (= nil
-		   (((ancestor (ntype?? '<any>)) doc-node) '{title "Savings 1" created "5/5/2008"}))) ; no ancestors for attribute collections
+           (((ancestor (ntype?? '<any>)) doc-node) '{title "Savings 1" created "5/5/2008"}))) ; no ancestors for attribute collections
 
 
 
 ; ancestor-or-self
 
 (assert (= (list '(ownerid "12398") 
-				 account-el
-				 doc-node)
-		   (((ancestor-or-self (ntype?? '*)) doc-node) "12398")))
+                 account-el
+                 doc-node)
+           (((ancestor-or-self (ntype?? '*)) doc-node) "12398")))
 
 (assert (= (list "12398"
-			     '(ownerid "12398") 
-				 account-el
-				 doc-node)
-		   (((ancestor-or-self (ntype?? '<any>)) doc-node) "12398")))
+                 '(ownerid "12398") 
+                 account-el
+                 doc-node)
+           (((ancestor-or-self (ntype?? '<any>)) doc-node) "12398")))
 
 (assert (= (list '(ownerid "12398") 
-				 account-el
-				 doc-node
-				 '(balance {currency "USD"} "3212.12")
-				 account-el
-				 doc-node)
-		   (((ancestor-or-self (ntype?? '<any>)) doc-node) '((ownerid "12398") (balance {currency "USD"} "3212.12")))))
+                 account-el
+                 doc-node
+                 '(balance {currency "USD"} "3212.12")
+                 account-el
+                 doc-node)
+           (((ancestor-or-self (ntype?? '<any>)) doc-node) '((ownerid "12398") (balance {currency "USD"} "3212.12")))))
 
 
 ; descendant
 
 (assert (= '("text1")
-		   ((descendant (ntype?? '<text>)) '(el1 "text1"))))
+           ((descendant (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= nil
-		   ((descendant (ntype?? '*PI*)) doc-node))) ; special elements ignored
+           ((descendant (ntype?? '*PI*)) doc-node))) ; special elements ignored
 
 (assert (= '("12398" "3212.12" "Main " "short term savings" " account." "  ")
-		   ((descendant (ntype?? '<data>)) doc-node)))
+           ((descendant (ntype?? '<data>)) doc-node)))
 
 (assert (= '("text1" "nestedtext1" "nestedtext1a" "text2" "nestedtext2")
-		   ((descendant (ntype?? '<data>)) nodelist)))
+           ((descendant (ntype?? '<data>)) nodelist)))
 
 (assert (= '("text1" 
-			 (nested1 "nestedtext1" (nested1a "nestedtext1a"))
-			 "nestedtext1"
-			 (nested1a "nestedtext1a")
-			 "nestedtext1a"
-			 "text2"
-			 (nested2 "nestedtext2")
-			 "nestedtext2")
-		   ((descendant (ntype?? '<any>)) nodelist)))
+             (nested1 "nestedtext1" (nested1a "nestedtext1a"))
+             "nestedtext1"
+             (nested1a "nestedtext1a")
+             "nestedtext1a"
+             "text2"
+             (nested2 "nestedtext2")
+             "nestedtext2")
+           ((descendant (ntype?? '<any>)) nodelist)))
 
 (assert (= '((nested1 "nestedtext1" (nested1a "nestedtext1a")) (nested1a "nestedtext1a") (nested2 "nestedtext2"))
-		   ((descendant (ntype?? '*)) nodelist)))
+           ((descendant (ntype?? '*)) nodelist)))
 
 ; descendant-or-self
 
 (assert (= '("text1")
-		   ((descendant-or-self (ntype?? '<text>)) '(el1 "text1"))))
+           ((descendant-or-self (ntype?? '<text>)) '(el1 "text1"))))
 
 (assert (= '((el1 "text1") "text1")
-		   ((descendant-or-self (ntype?? '<any>)) '(el1 "text1"))))
+           ((descendant-or-self (ntype?? '<any>)) '(el1 "text1"))))
 
 (assert (= nil
-		   ((descendant-or-self (ntype?? '*PI*)) doc-node))) ; special elements ignored
+           ((descendant-or-self (ntype?? '*PI*)) doc-node))) ; special elements ignored
 
 (assert (= '("12398" "3212.12" "Main " "short term savings" " account." "  ")
-		   ((descendant-or-self (ntype?? '<data>)) doc-node)))
+           ((descendant-or-self (ntype?? '<data>)) doc-node)))
 
 (assert (= '("text1" "nestedtext1" "nestedtext1a" "text2" "nestedtext2")
-		   ((descendant-or-self (ntype?? '<data>)) nodelist)))
+           ((descendant-or-self (ntype?? '<data>)) nodelist)))
 
-				
+                
 (assert (= '((el1 {a "a"} "text1" (nested1 "nestedtext1" (nested1a "nestedtext1a")))
-			 "text1" 
-			 (nested1 "nestedtext1" (nested1a "nestedtext1a"))
-			 "nestedtext1"
-			 (nested1a "nestedtext1a")
-			 "nestedtext1a"
-			 (el2 "text2" (nested2 "nestedtext2"))
-			 "text2"
-			 (nested2 "nestedtext2")
-			 "nestedtext2")
-		   ((descendant-or-self (ntype?? '<any>)) nodelist)))
+             "text1" 
+             (nested1 "nestedtext1" (nested1a "nestedtext1a"))
+             "nestedtext1"
+             (nested1a "nestedtext1a")
+             "nestedtext1a"
+             (el2 "text2" (nested2 "nestedtext2"))
+             "text2"
+             (nested2 "nestedtext2")
+             "nestedtext2")
+           ((descendant-or-self (ntype?? '<any>)) nodelist)))
 
 (assert (= '((el1 {a "a"} "text1" (nested1 "nestedtext1" (nested1a "nestedtext1a")))
-			 (nested1 "nestedtext1" (nested1a "nestedtext1a"))
-			 (nested1a "nestedtext1a")
-			 (el2 "text2" (nested2 "nestedtext2"))
-			 (nested2 "nestedtext2"))
-		   ((descendant-or-self (ntype?? '*)) nodelist)))
+             (nested1 "nestedtext1" (nested1a "nestedtext1a"))
+             (nested1a "nestedtext1a")
+             (el2 "text2" (nested2 "nestedtext2"))
+             (nested2 "nestedtext2"))
+           ((descendant-or-self (ntype?? '*)) nodelist)))
 
 ;; expand-ns-prefixes
 (assert (= '(["http://etc" el] el (|not| ["http://etc" el] el (el ["http://etc" el])) el ["http://etc" b])
@@ -623,47 +623,47 @@
 ;; cxpath tests
 
 (assert (= (list account-el)
-		   ((cxpath '(account)) doc-node)))
+           ((cxpath '(account)) doc-node)))
 
 (assert (= (list account-el-ns)
-		 ((cxpath '(["http://some.bank.com/ns" account])) doc-node-ns)))
+         ((cxpath '(["http://some.bank.com/ns" account])) doc-node-ns)))
 
 ; same thing with namespace map applying default namespace on the account element
 (assert (= (list account-el-ns)
            ((cxpath '(account) ns-uris) doc-node-ns)))
 
 (assert (= '((ownerid "12398"))
-		   ((cxpath '(account ownerid)) doc-node)))
+           ((cxpath '(account ownerid)) doc-node)))
 
 (assert (= '((["http://some.bank.com/ns" ownerid] "12398"))
-		   ((cxpath '(account ownerid) ns-uris) doc-node-ns)))
+           ((cxpath '(account ownerid) ns-uris) doc-node-ns)))
 
 (assert (= '((ownerid "12398") (balance {currency "USD"} "3212.12"))
-		   ((cxpath '(account (|or| ownerid balance))) doc-node)))
+           ((cxpath '(account (|or| ownerid balance))) doc-node)))
 
 (assert (= '((["http://some.bank.com/ns" ownerid] "12398") (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12"))
-		   ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
+           ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
 
 (assert (= '({title "Savings 1", created "5/5/2008"} (ownerid "12398") (balance {currency "USD"} "3212.12"))
-		   ((cxpath '(account (|or| <a> <data> ownerid (. <a> currency)))) doc-node)))
+           ((cxpath '(account (|or| <a> <data> ownerid (. <a> currency)))) doc-node)))
 
 
 (assert (= (with-xmlns ns-uris '((ownerid "12398")  (balance {sb/currency "USD"} "3212.12")))
-		   ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
+           ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
 
 
 (assert (= '({title "Savings 1" created "5/5/2008"}
-			 (descr-html "Main " (b "short term savings") " account.")
-			 (report-separator "  ")
-			 (*PI* "myapp" "another processing instruction"))
-   		   ((cxpath '(account (|not| ownerid balance))) doc-node)))
+             (descr-html "Main " (b "short term savings") " account.")
+             (report-separator "  ")
+             (*PI* "myapp" "another processing instruction"))
+           ((cxpath '(account (|not| ownerid balance))) doc-node)))
 
 ; TODO: better syntax for this?  Syntax quote seems to garble things too much by inserting namespaces on symbols: how to handle this?
 (assert (= '((descr-html "Main " (b "short term savings") " account.") (report-separator "  "))
            ((cxpath (concat '(account (|not| ownerid balance)) (list (filter-nodes element?)))) doc-node)))
 
 (assert (= '("12398")
-		   ((cxpath '(account ownerid <text>)) doc-node)))
+           ((cxpath '(account ownerid <text>)) doc-node)))
 
 (assert (= '("Savings 1")
            ((cxpath '(account <a> title <text>)) doc-node)))
@@ -672,7 +672,7 @@
            ((cxpath '(account <a> title ..)) doc-node)))
 
 (assert (= '((ownerid "12398"))
-		   ((cxpath '(account <a> title .. ownerid)) doc-node)))
+           ((cxpath '(account <a> title .. ownerid)) doc-node)))
 
 (assert (= (list '[title "Savings 1"] 
                  account-el
@@ -687,7 +687,7 @@
            ((cxpath '((* (balance <a> currency (= "USD"))) ownerid <text>)) doc-node)))
 
 (assert (= '((b  "short term savings"))
-		   ((cxpath '((* (balance (= "3212.12")) (ownerid (= "12398")) ) descr-html b)) doc-node)))
+           ((cxpath '((* (balance (= "3212.12")) (ownerid (= "12398")) ) descr-html b)) doc-node)))
 
 
 ; TODO: again, how to use syntax quote here?
@@ -717,7 +717,7 @@
 
 ; parent of attribute text
 (assert (= ((cxpath '(/ <a> *)) doc-node)
-		   ((cxpath '(/ <a> * <text> ..)) doc-node)))
+           ((cxpath '(/ <a> * <text> ..)) doc-node)))
 
 (assert (= ((cxpath '(/ <a> * <text> .. ..*)) doc-node)
            ((cxpath '(/ <a> * ..*)) doc-node)))

@@ -5,17 +5,17 @@
 
 
 (def doc-node '(*TOP*
-				  (*PI* "myapp" "a processing instruction")
-				  (account {title "Savings 1" created "5/5/2008"}
-					(owner "12398")
-					(balance {currency "USD"} "3212.12")
-					(descr-html "Main " (b "short term savings") " account.")
-					(report-separator "  ")
-					(*PI* "myapp" "another processing instruction"))))
+                  (*PI* "myapp" "a processing instruction")
+                  (account {title "Savings 1" created "5/5/2008"}
+                    (owner "12398")
+                    (balance {currency "USD"} "3212.12")
+                    (descr-html "Main " (b "short term savings") " account.")
+                    (report-separator "  ")
+                    (*PI* "myapp" "another processing instruction"))))
 
 ;; Obtaining the same document by parsing:
 (let [xml-str 
-	  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?myapp a processing instruction?>
 <account title=\"Savings 1\" created='5/5/2008'>
   <owner>12398</owner>
@@ -25,14 +25,14 @@
   <?myapp another processing instruction?>
 </account>"]
   (assert (= doc-node
-			 (cxml/parse-to-list (new java.io.StringReader xml-str)))))
+             (cxml/parse-to-list (new java.io.StringReader xml-str)))))
 
 
 ;; Simple element selection.
 ;; A path step which is a tag just selects the child elements from its input nodes
 ;; which have the required tag.
 (def v1
-	 ((cxpath '(account balance))
+     ((cxpath '(account balance))
         doc-node))
 ;; ==>  ((balance {currency "USD"} "3212.12"))
 
@@ -48,7 +48,7 @@
 ;;    <data> - data node: text, number, boolean (latter 2 not produced by parser)
 ;;    <any>  - any node
 (def v2a
-	 ((cxpath '(account *)) 
+     ((cxpath '(account *)) 
         doc-node))
 ;; ==> ( (owner "12398")
 ;;       (balance {currency "USD"} "3212.12")
@@ -59,7 +59,7 @@
 ;; Text selection - <text>
 ;; The <text> step selects any child nodes which are text nodes.
 (def v2b 
-	 ((cxpath '(account owner <text>))
+     ((cxpath '(account owner <text>))
         doc-node))
 ;; ==>  ("12398")
 
@@ -67,7 +67,7 @@
 ;; The attribute axis - <a>
 ;; This axis selects any kid nodes which are attribute collections (maps).
 (def v2c
-	 ((cxpath '(account <a>))
+     ((cxpath '(account <a>))
         doc-node))
 ;; ==> ( {title "Savings 1" created "5/5/2008"} )
 
@@ -78,8 +78,8 @@
 ;; and any nodes reachable recursively in this same way through child elements.
 ;; This example shows all descendants of the account element.
 (def v3b
-	 ((cxpath '(account /))
-	    doc-node))
+     ((cxpath '(account /))
+        doc-node))
 ;; ==> '( (account ... <entire account element here> ...)
 ;;        (owner "12398") 
 ;;        "12398" 
@@ -95,7 +95,7 @@
 
 ;; This example selects all element descendants of the account element.
 (def v3b
-	 ((cxpath '(account / *))
+     ((cxpath '(account / *))
         doc-node))
 ;; ==> ( (owner "12398")
 ;;       (balance {currency "USD"} "3212.12")
@@ -114,7 +114,7 @@
 ;; An example of the latter follows this one. This example just selects nodes 
 ;; matching either of two tag alternatives.
 (def v4a
-	 ((cxpath '(account (|or| owner balance)))
+     ((cxpath '(account (|or| owner balance)))
         doc-node))
 ;; ==>  ( (owner "12398") (balance {currency "USD"} "3212.12") )
 
@@ -126,7 +126,7 @@
 ;; of account which are either text nodes, an owner element, an element having a currency
 ;; attribute (a subpath), or an element having a "b" subelement (also a subpath).
 (def v4b
-	 ((cxpath '(account / (|or| <text> owner (<a> currency) (b))))
+     ((cxpath '(account / (|or| <text> owner (<a> currency) (b))))
         doc-node))
 ;; ==>  ( (owner "12398")
 ;;        (balance {currency "USD"} "3212.12")
@@ -141,7 +141,7 @@
 ;; (<a> currency) subpath, instead of the account/balance element the subpath was
 ;; applied to.
 (def v4c
-	 ((cxpath '(account / (|alt| <text> owner (<a> currency))))
+     ((cxpath '(account / (|alt| <text> owner (<a> currency))))
         doc-node))
 ;; ==>  ( (owner "12398")
 ;;        "12398" "3212.12" "Main " " account." "short term savings" "  "
@@ -155,7 +155,7 @@
 ;; we require a currency = "USD" within the subpath alternative (giving the
 ;; same results).
 (def v5
-	 ((cxpath '(account / (|or| <text> owner (<a> currency (= "USD")))))
+     ((cxpath '(account / (|or| <text> owner (<a> currency (= "USD")))))
         doc-node))
 ;; ==>  ( (owner "12398") (balance {currency "USD"} "3212.12") "12398" "3212.12" "Main " " account." "short term savings" "  " )
 
@@ -164,7 +164,7 @@
 ;; The |not| operator is the complement of the |or| operator: it selects
 ;; a node whenever the |or| operator would not have.
 (def v6
-	 ((cxpath '(account / (|not| <text> owner (<a> currency (= "USD")))))
+     ((cxpath '(account / (|not| <text> owner (<a> currency (= "USD")))))
         doc-node))
 ;; ==> ( {title "Savings 1", created "5/5/2008"}
 ;;       (descr-html "Main " (b "short term savings") " account.")
@@ -180,19 +180,19 @@
 ;; elements, and will match the * node type.  Attributes are always map entries (vectors).
 ;; Select all attribute nodes in the document.
 (def v7a
-	 ((cxpath '(/ <a> *))
+     ((cxpath '(/ <a> *))
         doc-node))
 ;; ==> ( [title "Savings 1"] [created "5/5/2008"] [currency "USD"] )
 
 (def v7b
-	 ((cxpath '(account <a> title))
+     ((cxpath '(account <a> title))
         doc-node))
 ;; ==> ( [title "Savings 1"] )
 
 
 ;; Attribute values
 (def v7c 
-	 ((cxpath '(account <a> title <text>))
+     ((cxpath '(account <a> title <text>))
         doc-node))
 ;; ==> ("Savings 1")
 
@@ -201,7 +201,7 @@
 ;; Parent selection - ..
 ;; The .. operator selects the parent nodes of its input nodes.
 (def v8a
-	 ((cxpath '(/ b ..)) 
+     ((cxpath '(/ b ..)) 
         doc-node))
 ;; ==> ( (descr-html "Main " (b "short term savings") " account.") )
 
@@ -210,7 +210,7 @@
 ;; attribute collection. There's an asymmetry here, just as in w3c XPath, because
 ;; the attributes are not reachable on the child axis from the parent.
 (def v8b
-	 ((cxpath '(account <a> title ..))
+     ((cxpath '(account <a> title ..))
         doc-node))
 ;; ==> ( (account ...) )
 
@@ -220,7 +220,7 @@
 ;; reachable through some number of applications of the parent operator.
 ;; The parent of the document element is the root element, *TOP*.
 (def v9
-	 ((cxpath '(account <a> title ..*))
+     ((cxpath '(account <a> title ..*))
         doc-node))
 ;; ==> ( [title "Savings 1"] ; self
 ;;       (account ...)       ; element containing the attribute
@@ -247,7 +247,7 @@
 ;; (balance <a> currency (= "USD"))) as a filter.  Finally, the subsequent "owner <text>"
 ;; after the subpath acts on the result elements of the subpath.
 (def v10a
-	 ((cxpath '( (* (balance <a> currency (= "USD"))) owner <text> )) 
+     ((cxpath '( (* (balance <a> currency (= "USD"))) owner <text> )) 
         doc-node))
 ;; ==> ("12398")
            
@@ -256,7 +256,7 @@
 ;; We retrieve the descr-html/b elements from under any elements having balance text of
 ;; "3212.12" and owner text of "12398".
 (def v10b
-	 ((cxpath '( (* (balance (= "3212.12")) (owner (= "12398"))) descr-html b ))
+     ((cxpath '( (* (balance (= "3212.12")) (owner (= "12398"))) descr-html b ))
         doc-node))
 ;; ==> ( (b  "short term savings") )
 
@@ -268,7 +268,7 @@
 ;; result values of the subpath expression.  The remaining path steps after the subpath,
 ;; <a> currency <text>, then select the currency from the subpath's balance results.
 (def v10c
-	 ((cxpath '( ((/ balance) ((= "3212.12"))) <a> currency <text> ))
+     ((cxpath '( ((/ balance) ((= "3212.12"))) <a> currency <text> ))
         doc-node))
 ;; ==> ( "USD" )
 
@@ -301,8 +301,8 @@
 (assert 
  (= doc-node-ns
     '(*TOP* 
-	  (*PI* "myapp" "a processing instruction")
-	  (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+      (*PI* "myapp" "a processing instruction")
+      (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
          (["http://some.bank.com/ns" owner] "12398")
          (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
          (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
@@ -353,10 +353,10 @@
 ;; The next example illustrates using a regular clojure function as a filter in the middle of a path.
 ;; Select all the attribute values from elements having at least 2 attributes.
 (def v12a
-	 (let [f (fn [nodelist] 
-				 (filter (fn [attrs-coll] (>= (count attrs-coll) 2)) nodelist))]
-	   ((cxpath (list '/ '<a> f '* '<text>)
-				ns-uris)
+     (let [f (fn [nodelist] 
+                 (filter (fn [attrs-coll] (>= (count attrs-coll) 2)) nodelist))]
+       ((cxpath (list '/ '<a> f '* '<text>)
+                ns-uris)
           doc-node-ns)))
 ;; ==> ( "5/5/2008"  "Savings 1" )
 

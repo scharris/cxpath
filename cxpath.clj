@@ -39,9 +39,9 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
   ([path]
      (cxpath path nil))
   ([path ns-bindings]
-	 (fn [n-nl] 
-		 (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings) n-nl)]
-		   ((apply node-reduce converters) n-nl)))))
+     (fn [n-nl] 
+         (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings) n-nl)]
+           ((apply node-reduce converters) n-nl)))))
 
 
 (defn converters-for-path 
@@ -60,39 +60,39 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
               (recur converters
                      (rest path))
 
-		    ;; descendant-or-self
+            ;; descendant-or-self
             (= DESCENDANT-OR-SELF-SYM loc-step)
-		      (if (or (not (tag-or-ntype? (frest path)))
+              (if (or (not (tag-or-ntype? (frest path)))
                       (= (frest path) NTYPE-ATTRIBUTES-SYM)) ; attrs nodetype symbol doubles as indicator to switch to attr axis
-				(recur (cons (descendant-or-self any) converters)            ; general case
+                (recur (cons (descendant-or-self any) converters)            ; general case
                        (rest path))
                 (recur (cons (descendant (ntype?? (frest path))) converters) ; optimized case
                        (rrest path)))
-			
-			;; ancestor-or-self
+            
+            ;; ancestor-or-self
             (= ANCESTOR-OR-SELF-SYM loc-step)
-				(recur (cons ((ancestor-or-self any) root-nodes) converters)
-					   (rest path))
-			
-			;; parent
+                (recur (cons ((ancestor-or-self any) root-nodes) converters)
+                       (rest path))
+            
+            ;; parent
             (= PARENT-SYM loc-step)
-			  (recur (cons ((parent any) root-nodes) converters)
-					 (rest path))
+              (recur (cons ((parent any) root-nodes) converters)
+                     (rest path))
 
-			;; handler for cxml element and special element nodes, and node-type symbols
-			(tag-or-ntype? loc-step)
+            ;; handler for cxml element and special element nodes, and node-type symbols
+            (tag-or-ntype? loc-step)
               (recur (cons (select-kids (ntype?? loc-step)) converters)
                      (rest path))
 
             ;; function handler
             (instance? clojure.lang.IFn loc-step)
-		      (recur (cons loc-step converters)
+              (recur (cons loc-step converters)
                      (rest path))
-		  
-		    ;; sequence handler
+          
+            ;; sequence handler
             (seq loc-step)
-		      (let [fst-sstep (first loc-step)]
-			    (cond
+              (let [fst-sstep (first loc-step)]
+                (cond
                    (= OR-SUBPATH-PROJECTING-SYM fst-sstep)
                      (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
                            ntypes-conv (if ntypes (select-kids (ntype-in?? ntypes))) ; converter filtering by node type alternatives
@@ -101,38 +101,38 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                        (recur (cons conv converters)
                               (rest path)))
                    (or (= OR-SYM  fst-sstep)
-					   (= NOT-SYM fst-sstep))
+                       (= NOT-SYM fst-sstep))
                      (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
                            preds (cons-if* ntypes (ntype-in?? ntypes)          ; node type alternatives predicate
                                    (map #(as-predicate (cxpath %)) paths))     ; cxpath expressions as predicates
-						   combined-pred (if (= OR-SYM fst-sstep)
-										   (or-predicates preds)
-										   (complement (or-predicates preds)))]
+                           combined-pred (if (= OR-SYM fst-sstep)
+                                           (or-predicates preds)
+                                           (complement (or-predicates preds)))]
                        (recur (cons (select-kids combined-pred) converters)
                               (rest path)))
                    (= EQUAL-SYM  fst-sstep)
-				     (recur (cons (select-kids (apply node-equal? (rest loc-step))) converters)
+                     (recur (cons (select-kids (apply node-equal? (rest loc-step))) converters)
                             (rest path))
                    (= IDENTICAL-SYM fst-sstep)
                      (recur (cons (select-kids (apply node-eq? (rest loc-step))) converters)
                             (rest path))
-				   (= NAMESPACE-ID-SYM fst-sstep)
-				     (recur (cons (select-kids (ntype-namespace-id?? (first (rest loc-step)))) converters)
+                   (= NAMESPACE-ID-SYM fst-sstep)
+                     (recur (cons (select-kids (ntype-namespace-id?? (first (rest loc-step)))) converters)
                             (rest path))
                    ;; general sub-path handler
                    :else
-				     (let [as-path (fn [x] (if (seq? x) x (list x)))
+                     (let [as-path (fn [x] (if (seq? x) x (list x)))
                            ;; selector for the initial substep
                            selector (if (tag-or-ntype? fst-sstep)
                                       (select-kids (ntype?? fst-sstep))
                                       (cxpath (as-path fst-sstep)))
-						   ;; converters for the remaining substeps, which act only as successive filters on the initial selector output
+                           ;; converters for the remaining substeps, which act only as successive filters on the initial selector output
                            filters (map (fn [sstep] 
                                             (if (integer? sstep) 
                                               (node-pos sstep)
                                               (filter-nodes (cxpath sstep))))
                                         (rest loc-step))
-						   ;; composition of initial selector and the converters
+                           ;; composition of initial selector and the converters
                            filtered-selector (apply node-reduce (cons selector filters))]
                        (recur (cons (fn [n-nl] (map-union filtered-selector (as-nodelist n-nl)))
                                     converters)
@@ -140,7 +140,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             
             ;; invalid
             :else 
-		      (throw (new java.lang.RuntimeException (str "Invalid path step: " loc-step)))))))
+              (throw (new java.lang.RuntimeException (str "Invalid path step: " loc-step)))))))
 
 
 (defn expand-ns-prefixes
