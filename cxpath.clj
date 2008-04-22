@@ -100,15 +100,16 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                            conv (apply node-or (cons-if ntypes-conv (cons-if paths-conv nil)))] ; union results of the converters
                        (recur (cons conv converters)
                               (rest path)))
-                   (= OR-SYM fst-sstep)
+                   (or (= OR-SYM  fst-sstep)
+					   (= NOT-SYM fst-sstep))
                      (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
                            preds (cons-if* ntypes (ntype-in?? ntypes)          ; node type alternatives predicate
-                                   (map #(as-predicate (cxpath %)) paths))]    ; cxpath path expressions as predicates
-                       (recur (cons (select-kids (or-predicates preds)) converters) ; or-together all the predicates
+                                   (map #(as-predicate (cxpath %)) paths))     ; cxpath expressions as predicates
+						   combined-pred (if (= OR-SYM fst-sstep)
+										   (or-predicates preds)
+										   (complement (or-predicates preds)))]
+                       (recur (cons (select-kids combined-pred) converters)
                               (rest path)))
-                   (= NOT-SYM fst-sstep)
-				     (recur (cons (select-kids (complement (ntype-tags?? (rest loc-step)))) converters)
-                            (rest path))
                    (= EQUAL-SYM  fst-sstep)
 				     (recur (cons (select-kids (apply node-equal? (rest loc-step))) converters)
                             (rest path))
