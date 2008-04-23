@@ -11,17 +11,22 @@
 ;     This distribution was the starting point for the port to Clojure.
 
 ; Differences in this Clojure version vs. the original Scheme implementation from sxml-tools:
-;   - Refactored, especially sub-path handling. Production of converters from syntax has been separated into its own function.  Node-reduce used in a couple of key places.
-;   - Added support in brief syntax for parent, ancestor and node-self axes (*).
-;   - More powerful |or| operator, now allowing node types and full subpath expressions as existence test filters, as well as the tags supported in the original.
-;   - New projecting |or| operator, |alt|, like the above but with subpaths projecting results instead of just providing a results existence test.
+;   - Refactored
+;          o Production of converters from syntax has been separated into its own function.
+;          o Main cxpath function is a simple node-reduce.
+;          o Subpath handling simplified and also relies on node-reduce now.
+;   - Added support in brief syntax for parent (..) and ancestor (..*) axes.
+;   - More powerful *or* operator |or|, now allowing node types and full subpath expressions as existence test filters,
+;     as well as the tags supported in the original.
+;   - New projecting *or* operator |alt|, like the above but with subpaths projecting results instead of just providing
+;      a results existence test.
 ;   - |not| operator extended to be complement of the new |or| operator, allowing subpaths and node types as well as tags.
-;   - New prefix expansion feature allowing clojure namespaced symbols or keywords to be expanded to [uri symbol] qualified tags prior to processing.
+;   - New prefix expansion feature allowing clojure namespaced symbols or keywords to be expanded to [uri symbol] qualified
+;     tags prior to processing.
 ;   - This version will never return nil, throwing a RuntimeException instead.
 ;   - Traditional w3c xpath strings are not supported as location steps.
 ;   - Removed variable bindings everywhere, which were only needed for tradtional xpath support.
-;
-;  (*) The node-self (".") operator is useful at the head of subpath expressions, for filtering incoming nodes without descent.
+
 
 (in-ns 'cxpath)
 (clojure/refer 'clojure)
@@ -56,11 +61,6 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
           (cond
             ;; parsing finished
             (nil? path) (reverse converters)
-
-            ;; node-self (no-op)
-            (= NODESELF-SYM loc-step)
-              (recur converters
-                     (rest path))
 
             ;; descendant-or-self
             (= DESCENDANT-OR-SELF-SYM loc-step)
@@ -158,7 +158,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                                    (if prefix-mapped?
                                      (if uri
                                        (with-meta [uri (if clj-ns (without-clj-ns tag) tag)] {:xmlns-prefix clj-ns})
-                                       (without-clj-ns tag))  ; uri mapped to nil, just remove the prefix (common for attributes so they don't inherit default namespace)
+                                       (without-clj-ns tag))  ; prefix mapped to nil, just remove the prefix
                                      tag)))] ; prefix not found in map, leave the tag alone
         (map (fn [step]
                  (cond

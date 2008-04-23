@@ -28,13 +28,19 @@
              (cxml/parse-to-list (new java.io.StringReader xml-str)))))
 
 
-;; Simple element selection.
+;; Simple element selection
 ;; A path step which is a tag just selects the child elements from its input nodes
 ;; which have the required tag.
 (def v1
      ((cxpath '(account balance))
         doc-node))
-;; ==>  ((balance {currency "USD"} "3212.12"))
+
+;; Make result tests a little more readable.
+(defn results [val1 val2] (= val1 val2))
+
+(results v1 
+		'( (balance {currency "USD"} "3212.12d") ))
+
 
 
 ;; Element wildcard - *.
@@ -50,10 +56,12 @@
 (def v2a
      ((cxpath '(account *)) 
         doc-node))
-;; ==> ( (owner "12398")
-;;       (balance {currency "USD"} "3212.12")
-;;       (descr-html "Main " (b "short term savings") " account.")
-;;       (report-separator "  ") )
+
+(results v2a
+		 '( (owner "12398")
+			(balance {currency "USD"} "3212.12")
+			(descr-html "Main " (b "short term savings") " account.")
+			(report-separator "  ") ))
 
 
 ;; Text selection - <text>
@@ -61,7 +69,9 @@
 (def v2b 
      ((cxpath '(account owner <text>))
         doc-node))
-;; ==>  ("12398")
+
+(results v2b
+		 '("12398"))
 
 
 ;; The attribute axis - <a>
@@ -69,7 +79,9 @@
 (def v2c
      ((cxpath '(account <a>))
         doc-node))
-;; ==> ( {title "Savings 1" created "5/5/2008"} )
+
+(results v2c 
+		 '( {title "Savings 1" created "5/5/2008"} ))
 
 
 ;; Descendants along the child axis - /
@@ -80,28 +92,32 @@
 (def v3b
      ((cxpath '(account /))
         doc-node))
-;; ==> '( (account ... <entire account element here> ...)
-;;        (owner "12398") 
-;;        "12398" 
-;;        (balance {currency "USD"} "3212.12")
-;;        "3212.12"
-;;        (descr-html "Main " (b "short term savings") " account.")
-;;        "Main "
-;;        (b "short term savings")
-;;        "short term savings"
-;;        " account."
-;;        (report-separator "  ")
-;;        "  " )
+
+(results v3b
+		 '( (account ... <entire account element here> ...)
+			(owner "12398") 
+			"12398" 
+			(balance {currency "USD"} "3212.12")
+			"3212.12"
+			(descr-html "Main " (b "short term savings") " account.")
+			"Main "
+			(b "short term savings")
+			"short term savings"
+			" account."
+			(report-separator "  ")
+			"  " ))
 
 ;; This example selects all element descendants of the account element.
 (def v3b
      ((cxpath '(account / *))
         doc-node))
-;; ==> ( (owner "12398")
-;;       (balance {currency "USD"} "3212.12")
-;;       (descr-html "Main " (b "short term savings") " account.")
-;;       (b "short term savings")
-;;       (report-separator "  ") )
+
+(results v3b
+		 '( (owner "12398")
+			(balance {currency "USD"} "3212.12")
+			(descr-html "Main " (b "short term savings") " account.")
+			(b "short term savings")
+			(report-separator "  ") ))
 
 
 ;; Selecting among alternatives: |or| and |alt|
@@ -116,7 +132,10 @@
 (def v4a
      ((cxpath '(account (|or| owner balance)))
         doc-node))
-;; ==>  ( (owner "12398") (balance {currency "USD"} "3212.12") )
+
+(results v4a
+		 '( (owner "12398") 
+			(balance {currency "USD"} "3212.12") ))
 
 
 ;; The |or| operator can also select nodes based on their general types (*, <a>,
@@ -128,10 +147,12 @@
 (def v4b
      ((cxpath '(account / (|or| <text> owner (<a> currency) (b))))
         doc-node))
-;; ==>  ( (owner "12398")
-;;        (balance {currency "USD"} "3212.12")
-;;        (descr-html "Main " (b "short term savings") " account.")
-;;        "12398" "3212.12" "Main " " account." "short term savings" "  ")
+
+(results v4b
+		 '( (owner "12398")
+			(balance {currency "USD"} "3212.12")
+			(descr-html "Main " (b "short term savings") " account.")
+			"12398" "3212.12" "Main " " account." "short term savings" "  "))
 
 
 ;; Projecting alternatives - |alt|
@@ -143,9 +164,11 @@
 (def v4c
      ((cxpath '(account / (|alt| <text> owner (<a> currency))))
         doc-node))
-;; ==>  ( (owner "12398")
-;;        "12398" "3212.12" "Main " " account." "short term savings" "  "
-;;        [currency "USD"] )
+
+(results v4c
+		 '( (owner "12398")
+			"12398" "3212.12" "Main " " account." "short term savings" "  "
+			[currency "USD"] ))
 
 
 ;; Node equality - =
@@ -157,7 +180,11 @@
 (def v5
      ((cxpath '(account / (|or| <text> owner (<a> currency (= "USD")))))
         doc-node))
-;; ==>  ( (owner "12398") (balance {currency "USD"} "3212.12") "12398" "3212.12" "Main " " account." "short term savings" "  " )
+
+(results v5
+		 '( (owner "12398")
+			(balance {currency "USD"} "3212.12")
+			"12398" "3212.12" "Main " " account." "short term savings" "  " ))
 
 
 ;; Negation of alternatives - |not|
@@ -166,12 +193,14 @@
 (def v6
      ((cxpath '(account / (|not| <text> owner (<a> currency (= "USD")))))
         doc-node))
-;; ==> ( {title "Savings 1", created "5/5/2008"}
-;;       (descr-html "Main " (b "short term savings") " account.")
-;;       (report-separator "  ")
-;;       (*PI* "myapp" "another processing instruction")
-;;       {currency "USD"}
-;;       (b "short term savings") )
+
+(results v6
+		 '( {title "Savings 1", created "5/5/2008"}
+			(descr-html "Main " (b "short term savings") " account.")
+			(report-separator "  ")
+			(*PI* "myapp" "another processing instruction")
+			{currency "USD"}
+			(b "short term savings") ))
 
 
 
@@ -182,19 +211,25 @@
 (def v7a
      ((cxpath '(/ <a> *))
         doc-node))
-;; ==> ( [title "Savings 1"] [created "5/5/2008"] [currency "USD"] )
+
+(results v7a
+		 '( [title "Savings 1"] [created "5/5/2008"] [currency "USD"] ))
 
 (def v7b
      ((cxpath '(account <a> title))
         doc-node))
-;; ==> ( [title "Savings 1"] )
+
+(results v7b
+		 '( [title "Savings 1"] ))
 
 
 ;; Attribute values
 (def v7c 
      ((cxpath '(account <a> title <text>))
         doc-node))
-;; ==> ("Savings 1")
+
+(results v7c
+		 '("Savings 1"))
 
 
 
@@ -203,7 +238,9 @@
 (def v8a
      ((cxpath '(/ b ..)) 
         doc-node))
-;; ==> ( (descr-html "Main " (b "short term savings") " account.") )
+
+(results v8a
+		 '( (descr-html "Main " (b "short term savings") " account.") ))
 
 
 ;; As in w3c XPath, the parent of an attribute is its containing element, not the
@@ -212,7 +249,17 @@
 (def v8b
      ((cxpath '(account <a> title ..))
         doc-node))
-;; ==> ( (account ...) )
+
+(def account-el 
+	 '(account {title "Savings 1" created "5/5/2008"}
+		(owner "12398")
+		(balance {currency "USD"} "3212.12")
+		(descr-html "Main " (b "short term savings") " account.")
+		(report-separator "  ")
+		(*PI* "myapp" "another processing instruction")))
+
+(results v8b
+		 (list account-el))
 
 
 ;; Ancestor selection - ..*
@@ -222,10 +269,11 @@
 (def v9
      ((cxpath '(account <a> title ..*))
         doc-node))
-;; ==> ( [title "Savings 1"] ; self
-;;       (account ...)       ; element containing the attribute
-;;       (*TOP* ...) )       ; entire document
 
+(results v9
+		 (list ['title "Savings 1"] ; self
+			   account-el           ; element containing the attribute
+			   doc-node ))          ; entire document
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -240,25 +288,43 @@
 ;; The subsequent path entries are only applied as filters independently to the nodes
 ;; returned by the _initial_ symbol or path in the subpath expression.
 
+;; In the example below, we choose the text of any subelement of account having a currency
+;; attribute of "USD".  Here the subpath (* (<a> currency (= "USD"))) represents elements
+;; having an attribute currency of "USD".  The initial * determines the subpath's initial
+;; results, to be filtered by the embedded subpath (<a> currencty (= "USD")) to form the
+;; final results for the subpath.
+(def v10a
+	 ((cxpath '( account (* (<a> currency (= "USD"))) <text>) )
+	  doc-node))
+
+(results v10a
+		 '( "3212.12" ))
+
+
 ;; In this example we choose any elements having a balance subelement with a currency
 ;; attribute value of "USD", and from these elements choose their owner text.  Here
 ;; (* (balance <a> currency (= "USD"))) is a subpath expression, with * as the initial
 ;; selector (determining the type of results for the subpath), and
 ;; (balance <a> currency (= "USD"))) as a filter.  Finally, the subsequent "owner <text>"
 ;; after the subpath acts on the result elements of the subpath.
-(def v10a
+(def v10b
      ((cxpath '( (* (balance <a> currency (= "USD"))) owner <text> )) 
         doc-node))
-;; ==> ("12398")
+
+(results v10b
+		 '("12398"))
            
 
 ;; This example is similar but illustrates using two filters in a subpath expression.
 ;; We retrieve the descr-html/b elements from under any elements having balance text of
 ;; "3212.12" and owner text of "12398".
-(def v10b
+(def v10c
      ((cxpath '( (* (balance (= "3212.12")) (owner (= "12398"))) descr-html b ))
         doc-node))
-;; ==> ( (b  "short term savings") )
+
+(results v10c
+		 '( (b  "short term savings") ))
+
 
 ;; The initial item in a subpath may itself be a cxpath expression.
 ;; In this example we get the currency attribute text of any element having a certain balance
@@ -267,10 +333,12 @@
 ;; These balance elements are then filtered by the ((= "3212.12")) cxpath, to yield the
 ;; result values of the subpath expression.  The remaining path steps after the subpath,
 ;; <a> currency <text>, then select the currency from the subpath's balance results.
-(def v10c
+(def v10d
      ((cxpath '( ((/ balance) ((= "3212.12"))) <a> currency <text> ))
         doc-node))
-;; ==> ( "USD" )
+
+(results v10d
+		 '( "USD" ))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -298,23 +366,24 @@
             (*PI* "myapp" "another processing instruction")))))
 
 ;; The true expanded form of the above.
-(assert 
- (= doc-node-ns
-    '(*TOP* 
-      (*PI* "myapp" "a processing instruction")
-      (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
-         (["http://some.bank.com/ns" owner] "12398")
-         (["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
-         (["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
-         (["http://some.bank.com/ns" report-separator] "  ")
-         (*PI* "myapp" "another processing instruction")))))
+(results doc-node-ns
+   '(*TOP* 
+	 (*PI* "myapp" "a processing instruction")
+	 (["http://some.bank.com/ns" account] {created "5/5/2008", title "Savings 1"}
+		(["http://some.bank.com/ns" owner] "12398")
+		(["http://some.bank.com/ns" balance] {["http://standards.org/banking" currency] "USD"} "3212.12")
+		(["http://some.bank.com/ns" descr-html] "Main " (["http://www.w3.org/HTML/1998/html4" b] "short term savings") " account.")
+		(["http://some.bank.com/ns" report-separator] "  ")
+		(*PI* "myapp" "another processing instruction"))))
 
 ;; Long form
 ;; Long-form qualified tags can be used anywhere unqualified tags could be used.
 (def v11a
      ((cxpath '(["http://some.bank.com/ns" account] ["http://some.bank.com/ns" owner]))
         doc-node-ns))
-;; ==> ( (["http://some.bank.com/ns" owner] "12398") )
+
+(results v11a
+		 '( (["http://some.bank.com/ns" owner] "12398") ))
 
 ;; Short form - using namespace prefixes
 ;; By passing in ns-uri's to cxpath as a second argument, namespace prefixes may be used on path
@@ -325,21 +394,27 @@
      ((cxpath '(account owner) 
               ns-uris) 
         doc-node-ns))
-;; ==> ( (["http://some.bank.com/ns" owner] "12398") )
+
+(results v11b
+		 '( (["http://some.bank.com/ns" owner] "12398") ))
 
 ;; An explict namespace prefix on one element, with the namespace of the account element defaulting.
 (def v11c
      ((cxpath '(account / html/b) 
               ns-uris) 
         doc-node-ns))
-;; ==> ((["http://www.w3.org/HTML/1998/html4" b] "short term savings"))
+
+(results v11c
+		 '( (["http://www.w3.org/HTML/1998/html4" b] "short term savings") ))
 
 ;; Namespace qualified attribute
 (def v11d
      ((cxpath '(account balance <a> sb/currency <text>)
               ns-uris)
         doc-node-ns))
-;; ==> ( "USD" )
+
+(results v11d
+		 '( "USD" ))
 
 
 ;; NOTE: The namespace prefix expansion done within cxpath expressions will currently apply a default
@@ -354,7 +429,9 @@
      ((cxpath '(account <a> no-ns/title)
               (assoc ns-uris "no-ns" nil))
         doc-node-ns))
-;; ==> '( [title "Savings 1"] )
+
+(results v11e
+		 '( [title "Savings 1"] ))
 
 
 
@@ -371,7 +448,9 @@
        ((cxpath (list '/ '<a> f '* '<text>)
                 ns-uris)
           doc-node-ns)))
-;; ==> ( "5/5/2008"  "Savings 1" )
+
+(results v12a
+		 '( "5/5/2008"  "Savings 1" ))
 
 ;; The function f in the above is a "converter", or a function that transforms a
 ;; nodelist to a nodelist.  The built-in path elements are themselves just shorthand
