@@ -11,11 +11,12 @@
 ;     This distribution was the starting point for the port to Clojure.
 
 ; Differences in this Clojure version vs. the original Scheme implementation from sxml-tools:
-;   - Refactored, especially sub-path handling. Converters production has been separated into its own function. Node-reduce used in a couple of key places.
+;   - Refactored, especially sub-path handling. Production of converters from syntax has been separated into its own function.  Node-reduce used in a couple of key places.
 ;   - Added support in brief syntax for parent, ancestor and node-self axes (*).
-;   - More powerful OR operator, now allowing node types and full subpath expressions as existence test filters, as well as the tags supported in the original.
-;   - New projecting OR operator, like the above but with subpaths projecting results instead of just providing a results existence test.
-;   - New prefix expansion feature allowing clojure namespaced symbols or keywords to be expanded to [uri symbol] qualified tags.
+;   - More powerful |or| operator, now allowing node types and full subpath expressions as existence test filters, as well as the tags supported in the original.
+;   - New projecting |or| operator, |alt|, like the above but with subpaths projecting results instead of just providing a results existence test.
+;   - |not| operator extended to be complement of the new |or| operator, allowing subpaths and node types as well as tags.
+;   - New prefix expansion feature allowing clojure namespaced symbols or keywords to be expanded to [uri symbol] qualified tags prior to processing.
 ;   - This version will never return nil, throwing a RuntimeException instead.
 ;   - Traditional w3c xpath strings are not supported as location steps.
 ;   - Removed variable bindings everywhere, which were only needed for tradtional xpath support.
@@ -40,7 +41,8 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
      (cxpath path nil))
   ([path ns-bindings]
      (fn [n-nl] 
-         (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings) n-nl)]
+         (let [converters (converters-for-path (expand-ns-prefixes path ns-bindings)
+                                               n-nl)]
            ((apply node-reduce converters) n-nl)))))
 
 
@@ -151,10 +153,13 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                                                  (not= cxml/DOCROOT-TAG %))
             maybe-expand-tag (fn [tag]
                                  (let [clj-ns (namespace tag)
-                                       uri (prefix->uri clj-ns)]
-                                   (if uri
-                                     (with-meta [uri (if clj-ns (without-clj-ns tag) tag)] {:xmlns-prefix clj-ns})
-                                     tag)))] ; found no uri for prefix, leave it alone
+                                       prefix-mapped? (contains? prefix->uri clj-ns)
+                                       uri (if prefix-mapped? (prefix->uri clj-ns))]
+                                   (if prefix-mapped?
+                                     (if uri
+                                       (with-meta [uri (if clj-ns (without-clj-ns tag) tag)] {:xmlns-prefix clj-ns})
+                                       (without-clj-ns tag))  ; uri mapped to nil, just remove the prefix (common for attributes so they don't inherit default namespace)
+                                     tag)))] ; prefix not found in map, leave the tag alone
         (map (fn [step]
                  (cond
                     (seq? step)

@@ -334,15 +334,28 @@
         doc-node-ns))
 ;; ==> ((["http://www.w3.org/HTML/1998/html4" b] "short term savings"))
 
+;; Namespace qualified attribute
+(def v11d
+     ((cxpath '(account balance <a> sb/currency <text>)
+              ns-uris)
+        doc-node-ns))
+;; ==> ( "USD" )
+
 
 ;; NOTE: The namespace prefix expansion done within cxpath expressions will currently apply a default
-;;       namespace, if one is provided in the prefix->uri map (under nil key), to _attribute_ tags 
-;;       as well as elements within the cxpath.  This differs from xml which will not apply a default
-;;       namespace to attributes (but where it is possible to tell what's an attribute tag).
-;;       TODO: provide a leading symbol or clojure namespace for attributes that will be tossed away
-;;             but which will prevent namespace lookup.  Actually if the user just maps some prefix
-;;             to nil and prefixing (non-qualified) attributes with that prefix should solve the problem.
-;;             This would allow using a default namespace in the presence of attribute tags in the path.
+;;       namespace, if one is provided in the prefix->uri map (under nil key), to unprefixed _attribute_
+;;       tags as well as elements within the cxpath.  This differs from xml which will not apply a default
+;;       namespace to attributes (but where it is possible to tell what's an attribute tag).  To prevent
+;;       this when using a default namespace, just use a prefix on attributes that is mapped to nil in 
+;;       the prefix->uri map passed to the cxpath function.
+;; In this example, account gets the default uri of "http://some.bank.com/ns", while the no-ns prefix on
+;; the title attribute, which is mapped to nil, assures no namespace for the attribute.
+(def v11e
+     ((cxpath '(account <a> no-ns/title)
+              (assoc ns-uris "no-ns" nil))
+        doc-node-ns))
+;; ==> '( [title "Savings 1"] )
+
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
