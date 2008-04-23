@@ -91,10 +91,11 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
               (recur (cons loc-step converters)
                      (rest path))
           
-            ;; sequence handler
+            ;; sequences
             (seq loc-step)
               (let [fst-sstep (first loc-step)]
                 (cond
+                   ;; alternatives, subpath projecting 
                    (= OR-SUBPATH-PROJECTING-SYM fst-sstep)
                      (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
                            ntypes-conv (if ntypes (select-kids (ntype-in?? ntypes))) ; converter filtering by node type alternatives
@@ -102,6 +103,7 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                            conv (apply node-or (cons-if ntypes-conv (cons-if paths-conv nil)))] ; union results of the converters
                        (recur (cons conv converters)
                               (rest path)))
+                   ;; alternatives and negation of alternatives
                    (or (= OR-SYM  fst-sstep)
                        (= NOT-SYM fst-sstep))
                      (let [[paths ntypes] (pass-fail-lists seq? (rest loc-step))
@@ -112,16 +114,19 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                                            (complement (or-predicates preds)))]
                        (recur (cons (select-kids combined-pred) converters)
                               (rest path)))
+                   ;; node equal
                    (= EQUAL-SYM  fst-sstep)
                      (recur (cons (select-kids (apply node-equal? (rest loc-step))) converters)
                             (rest path))
+                   ;; node identical
                    (= IDENTICAL-SYM fst-sstep)
                      (recur (cons (select-kids (apply node-eq? (rest loc-step))) converters)
                             (rest path))
+                   ;; namespace
                    (= NAMESPACE-ID-SYM fst-sstep)
                      (recur (cons (select-kids (ntype-namespace-id?? (first (rest loc-step)))) converters)
                             (rest path))
-                   ;; general sub-path handler
+                   ;; general front-projecting sub-paths
                    :else
                      (let [as-path (fn [x] (if (seq? x) x (list x)))
                            ;; selector for the initial substep
