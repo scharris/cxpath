@@ -81,12 +81,12 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
               (recur (cons ((parent any) root-nodes) converters)
                      (rest path))
 
-            ;; handler for cxml element and special element nodes, and node-type symbols
+            ;; tags and node types
             (tag-or-ntype? loc-step)
               (recur (cons (select-kids (ntype?? loc-step)) converters)
                      (rest path))
 
-            ;; function handler
+            ;; custom converter functions
             (instance? clojure.lang.IFn loc-step)
               (recur (cons loc-step converters)
                      (rest path))
