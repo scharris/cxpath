@@ -891,6 +891,8 @@ less restrictive (and breadth-first) implementation of a similar idea, see node-
                  (recur (cons (child-nodes (ffirst seq))
                               (cons (rfirst seq) (rest seq)))))))))))
 
+
+
 ; TODO: finish from here
 (comment
 
@@ -991,4 +993,10 @@ less restrictive (and breadth-first) implementation of a similar idea, see node-
 ; with SXPath/SXPathlib ver. 3.5.x.x and earlier.
 ; Now it's a particular case of 'parent' application: 
 (def node-parent (parent (ntype?? NTYPE-ANY-SYM)))
+
+
+(def concatenated-descendants-text
+  (let [text-descendants (descendant (ntype?? '<text>))]
+        (fn [n-nl] (map (fn [n] (apply str (text-descendants n)))
+                        (as-nodelist n-nl)))))
 

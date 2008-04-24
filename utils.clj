@@ -2,7 +2,7 @@
 (in-ns 'cxpath)
 (clojure/refer 'clojure)
 
-(defn integer? [x] (instance? clojure.lang.IntegerNum x))
+(defn number? [x] (instance? java.lang.Number x))
 
 (defn pass-fail-lists
   "Return a pair [passes fails] of lists, where passes are the items of the argument list that pass the argument

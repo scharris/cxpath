@@ -134,8 +134,8 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                                       (select-kids (ntype?? fst-sstep))
                                       (cxpath (as-path fst-sstep)))
                            ;; converters for the remaining substeps, which act only as successive filters on the initial selector output
-                           filters (map (fn [sstep] 
-                                            (if (integer? sstep) 
+                           filters (map (fn [sstep]
+                                            (if (number? sstep) 
                                               (node-pos sstep)
                                               (filter-nodes (cxpath sstep))))
                                         (rest loc-step))
@@ -176,6 +176,8 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
     path))
 
 (def any (ntype?? NTYPE-ANY-SYM))
+
+
 
 ; (load-file "cxpath.clj") (in-ns 'cxpath)
 
