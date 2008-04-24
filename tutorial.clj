@@ -486,17 +486,16 @@
 
 
 ;; This example uses custom converters to filter nodes in a subpath expression.
-;; Here we select any html bold elements under child elements of account whose markup-stripped text
-;; matches the regular expression pattern "[Mm]ain .* account".
-;; Here descendants-text is a converter that strips markup and concatenates the resulting text nodes,
-;; followed by the filter-nodes which 
+;; We select any html bold elements under child elements of account whose markup-stripped text
+;; matches the regular expression pattern "[Mm]ain .* account". The descendants-text function
+;; is a converter that strips markup, and it is followed by an application of the filter-nodes
+;; function which takes a predicate and uses it to filter nodes.
 (def v12b
      ((cxpath (list 'account (list '* (list concatenated-descendants-text (filter-nodes #(re-seq #"[Mm]ain .* account" %)))) 'b))
         doc-node))
 
 (results v12b
          '( (b "short term savings") ))
-
 
 
 ;; Note: Using keywords instead of symbols in the above path expression would have allowed use of syntax
@@ -507,5 +506,3 @@
 ;; cxpath library already supports both.
 
 ;; (load-file "tutorial.clj") (in-ns 'cxpath)
-
-
