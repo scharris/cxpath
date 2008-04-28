@@ -176,11 +176,6 @@ the symbol or keyword in the resulting node. All other nodes are left alone."
       (map #(with-xmlns prefix->uri %) n-nl)
       ; single node
       (let [node n-nl
-            map-mapentries (fn [f m]
-                               (reduce (fn [res [key val]] (let [[new-key new-val] (f key val)] (assoc res new-key new-val)))
-                                       nil
-                                       m))
-
             maybe-expand-tag (fn [tag allow-default-ns]
                                  (if (or (vector? tag)             ; already has a namespace
                                          (= cxml/DOCROOT-TAG tag)) ; document root

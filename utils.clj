@@ -48,3 +48,7 @@ logically true value or false if no predicates produce a logically true value."
   [item l]
     (if item (cons item l) l))
 
+(defn map-mapentries [f m]
+  (reduce (fn [res [key val]] (let [[new-key new-val] (f key val)] (assoc res new-key new-val)))
+          nil
+          m))

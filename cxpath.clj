@@ -178,8 +178,24 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
 (def any (ntype?? NTYPE-ANY-SYM))
 
 
+;; TODO: this requires a patch to Clojure's LispReader.java which hasn't yielded a response from Rich yet.
+(defn unquote-obj [uq] (. uq getObject))
+
+(defmacro cxp 
+  [steps & ns-uris]
+    (if (> (count ns-uris) 1)
+      (throw (new java.lang.IllegalArgumentException (str "Expected 1 or 2 args to cxp")))
+      (let [ns-uris (first ns-uris)
+            emit-step (fn this-fn [s]
+                        (cond
+                          (seq? s)
+                            (cons 'list (map this-fn s))
+                          (symbol? s)
+                            `(quote ~s)
+                          (instance? clojure.lang.LispReader$Unquote s)
+                            (unquote-obj s)
+                          :else s))]
+        (list 'cxpath (cons 'list (map emit-step steps)) ns-uris))))
+
 
 ; (load-file "cxpath.clj") (in-ns 'cxpath)
-
-
-
