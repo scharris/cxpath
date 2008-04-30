@@ -492,19 +492,19 @@
 ; parent
 
 (assert (= '((ownerid "12398"))
-           (((parent (ntype?? '*)) doc-node) "12398")))
+           ((parent (ntype?? '*) doc-node) "12398")))
 
 (assert (= '((ownerid "12398")
              (balance {currency "USD"} "3212.12"))
-           (((parent (ntype?? '*)) doc-node) '("12398" "3212.12"))))
+           ((parent (ntype?? '*) doc-node) '("12398" "3212.12"))))
 
 (assert (= (list account-el)
-           (((parent (ntype?? '*)) doc-node) '(report-separator "  "))))
+           ((parent (ntype?? '*) doc-node) '(report-separator "  "))))
 
 
 (assert (= (list '(balance {currency "USD"} "3212.12") 
                  account-el)
-           (((parent (ntype?? '*)) doc-node) '([currency "USD"] [title "Savings 1"]))))
+           ((parent (ntype?? '*) doc-node) '([currency "USD"] [title "Savings 1"]))))
 
 
 ; ancestor
@@ -512,19 +512,19 @@
 (assert (= (list '(ownerid "12398") 
                  account-el
                  doc-node)
-           (((ancestor (ntype?? '*)) doc-node) "12398")))
+           ((ancestor (ntype?? '*) doc-node) "12398")))
 
 
 (assert (= (list account-el
                  doc-node)
-           (((ancestor (ntype?? '<any>)) doc-node) '(ownerid "12398"))))
+           ((ancestor (ntype?? '<any>) doc-node) '(ownerid "12398"))))
 
 (assert (= (list account-el
                  doc-node)
-           (((ancestor (ntype?? '<any>)) doc-node) '[title "Savings 1"])))
+           ((ancestor (ntype?? '<any>) doc-node) '[title "Savings 1"])))
 
 (assert (= nil
-           (((ancestor (ntype?? '<any>)) doc-node) '{title "Savings 1" created "5/5/2008"}))) ; no ancestors for attribute collections
+           ((ancestor (ntype?? '<any>) doc-node) '{title "Savings 1" created "5/5/2008"}))) ; no ancestors for attribute collections
 
 
 
@@ -533,13 +533,13 @@
 (assert (= (list '(ownerid "12398") 
                  account-el
                  doc-node)
-           (((ancestor-or-self (ntype?? '*)) doc-node) "12398")))
+           ((ancestor-or-self (ntype?? '*) doc-node) "12398")))
 
 (assert (= (list "12398"
                  '(ownerid "12398") 
                  account-el
                  doc-node)
-           (((ancestor-or-self (ntype?? '<any>)) doc-node) "12398")))
+           ((ancestor-or-self (ntype?? '<any>) doc-node) "12398")))
 
 (assert (= (list '(ownerid "12398") 
                  account-el
@@ -547,7 +547,7 @@
                  '(balance {currency "USD"} "3212.12")
                  account-el
                  doc-node)
-           (((ancestor-or-self (ntype?? '<any>)) doc-node) '((ownerid "12398") (balance {currency "USD"} "3212.12")))))
+           ((ancestor-or-self (ntype?? '<any>) doc-node) '((ownerid "12398") (balance {currency "USD"} "3212.12")))))
 
 
 ; descendant
@@ -645,7 +645,7 @@
            ((cxpath '(account (|or| ownerid balance)) ns-uris) doc-node-ns)))
 
 (assert (= '({title "Savings 1", created "5/5/2008"} (ownerid "12398") (balance {currency "USD"} "3212.12"))
-           ((cxpath '(account (|or| <a> <data> ownerid (. <a> currency)))) doc-node)))
+           ((cxpath '(account (|or| <a> <data> ownerid (<a> currency)))) doc-node)))
 
 
 (assert (= (with-xmlns ns-uris '((ownerid "12398")  (balance {sb/currency "USD"} "3212.12")))
@@ -692,7 +692,7 @@
 
 ; TODO: again, how to use syntax quote here?
 (assert (= (list account-el)
-           ((cxpath (list '* '(<a> (title (= "Savings 1"))) 'title ((parent identity) doc-node))) doc-node)))
+           ((cxpath (list '* '(<a> (title (= "Savings 1"))) 'title (parent identity doc-node))) doc-node)))
 (assert (= '((ownerid "12398"))
            ((cxpath '((* (<a> title (= "Savings 1")) (balance)) ownerid)) doc-node)))
 

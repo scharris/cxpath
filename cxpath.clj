@@ -12,17 +12,16 @@
 
 ; Differences in this Clojure version vs. the original Scheme implementation from sxml-tools:
 ;   - Refactored
-;          o Production of converters from syntax has been separated into its own function.
+;          o Production of converters from brief syntax has been separated into its own function.
 ;          o Main cxpath function is a simple node-reduce.
 ;          o Subpath handling simplified and also relies on node-reduce now.
 ;   - Added support in brief syntax for parent (..) and ancestor (..*) axes.
-;   - More powerful *or* operator |or|, now allowing node types and full subpath expressions as existence test filters,
-;     as well as the tags supported in the original.
-;   - New projecting *or* operator |alt|, like the above but with subpaths projecting results instead of just providing
-;      a results existence test.
+;   - A pair of more powerful replacements for the original *or* operator
+;       i)  |or| - allows node types and full subpath expressions as existence test filters, as well tags.
+;       ii) |alt| - like the new |or| operator but subpaths project results instead of just providing existence tests.
 ;   - |not| operator extended to be complement of the new |or| operator, allowing subpaths and node types as well as tags.
 ;   - New prefix expansion feature allowing clojure namespaced symbols or keywords to be expanded to [uri symbol] qualified
-;     tags prior to processing.
+;      tags prior to processing.
 ;   - This version will never return nil, throwing a RuntimeException instead.
 ;   - Traditional w3c xpath strings are not supported as location steps.
 ;   - Removed variable bindings everywhere, which were only needed for tradtional xpath support.
@@ -73,12 +72,12 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
             
             ;; ancestor-or-self
             (= ANCESTOR-OR-SELF-SYM loc-step)
-                (recur (cons ((ancestor-or-self any) root-nodes) converters)
+                (recur (cons (ancestor-or-self any root-nodes) converters)
                        (rest path))
             
             ;; parent
             (= PARENT-SYM loc-step)
-              (recur (cons ((parent any) root-nodes) converters)
+              (recur (cons (parent any root-nodes) converters)
                      (rest path))
 
             ;; tags and node types
@@ -196,6 +195,17 @@ ie cxpath:: [PathComponent] (,NS_Bindings)? -> Converter"
                             (unquote-obj s)
                           :else s))]
         (list 'cxpath (cons 'list (map emit-step steps)) ns-uris))))
+
+;; Needs this change to LispReader.java
+;public static class Unquote{
+;	final Object o;
+
+;	public Unquote(Object o){
+;		this.o = o;
+;	}
+
+;	public Object getObject() { return o; }
+;}
 
 
 ; (load-file "cxpath.clj") (in-ns 'cxpath)

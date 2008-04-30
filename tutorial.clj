@@ -6,7 +6,7 @@
 
 (def doc-node '(*TOP*
                   (*PI* "myapp" "a processing instruction")
-                  (customer
+                  (account-list
                     (account {title "Savings 1" created "3/5/2008"}
                       (owner "12398")
                       (balance {currency "USD"} "3212.12")
@@ -16,14 +16,13 @@
                     (account {title "Checking" created "4/27/2008"}
                       (owner "12398")
                       (balance {currency "PND"} "123.00")
-                      (descr-html "Primary" (b "checking") " account.")))))
+                      (descr-html "Primary " (b "checking") " account.")))))
 
-(comment - TODO are the attribute maps causing the difference here?
 ;; Obtaining the same document by parsing:
 (let [xml-str 
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?myapp a processing instruction?>
-<customer>
+<account-list>
  <account title=\"Savings 1\" created='3/5/2008'>
    <owner>12398</owner>
    <balance currency=\"USD\">3212.12</balance>
@@ -36,16 +35,16 @@
    <balance currency=\"PND\">123.00</balance>
    <descr-html>Primary <b>checking</b> account.</descr-html>
  </account>
-</customer>"]
+</account-list>"]
   (assert (= doc-node
              (cxml/parse-to-list (new java.io.StringReader xml-str)))))
-)
+
 
 ;; Simple element selection
 ;; A path step which is a tag just selects the child elements from its input nodes
 ;; which have the required tag.
 (def v1
-     ((cxpath '(customer account balance))
+     ((cxpath '(account-list account balance))
         doc-node))
 
 ;; Make result tests a little more readable.
@@ -68,7 +67,7 @@
 ;;    <data> - data node: text, number, boolean (latter 2 not produced by parser)
 ;;    <any>  - any node
 (def v2a
-     ((cxpath '(customer account descr-html *)) 
+     ((cxpath '(account-list account descr-html *)) 
         doc-node))
 
 
@@ -80,17 +79,17 @@
 ;; The <text> step selects any child nodes which are text nodes.  This is *not* the concatenated text of
 ;; all descendants, we would use concatenated-descendants-text for that (example below).
 (def v2b 
-     ((cxpath '(customer account descr-html <text>))
+     ((cxpath '(account-list account descr-html <text>))
         doc-node))
 
 (results v2b
-         '( "Main " " account." "Primary" " account." ))
+         '( "Main " " account." "Primary " " account." ))
 
 
 ;; The attribute axis - <a>
 ;; This axis selects any kid nodes which are attribute collections (maps).
 (def v2c
-     ((cxpath '(customer account <a>))
+     ((cxpath '(account-list account <a>))
         doc-node))
 
 (results v2c 
@@ -102,7 +101,7 @@
 ;; Once we are descended into the attribute axis, attributes are treated as regular cxml
 ;; elements, and will match the * node type.  Attributes are always map entries (vectors).
 (def v2d
-     ((cxpath '(customer account <a> *))
+     ((cxpath '(account-list account <a> *))
         doc-node))
 
 (results v2d
@@ -113,7 +112,7 @@
 
 ;; Specific attribute "element"
 (def v2e
-     ((cxpath '(customer account <a> title))
+     ((cxpath '(account-list account <a> title))
         doc-node))
 
 (results v2e
@@ -122,7 +121,7 @@
 
 ;; Attribute values
 (def v2f
-     ((cxpath '(customer account <a> title <text>))
+     ((cxpath '(account-list account <a> title <text>))
         doc-node))
 
 (results v2f
@@ -133,9 +132,9 @@
 ;; The / step selects the input nodes themselves and their child nodes
 ;; (elements and data nodes, excluding attribute collections and attributes),
 ;; and any nodes reachable recursively in this same way through child elements.
-;; This example shows all descendants of the customer/account/descr-html elements.
+;; This example shows all descendants of the account-list/account/descr-html elements.
 (def v3a
-     ((cxpath '(customer account descr-html /))
+     ((cxpath '(account-list account descr-html /))
         doc-node))
 
 (results v3a
@@ -144,16 +143,16 @@
             (b "short term savings")
             "short term savings"
             " account."
-            (descr-html "Primary" (b "checking") " account.")
-            "Primary" 
+            (descr-html "Primary " (b "checking") " account.")
+            "Primary " 
             (b "checking")
             "checking"
             " account." ) )
 
 
-;; This example selects all element descendants of the customer/account/descr-html elements.
+;; This example selects all element descendants of the account-list/account/descr-html elements.
 (def v3b
-     ((cxpath '(customer account descr-html / *))
+     ((cxpath '(account-list account descr-html / *))
         doc-node))
 
 (results v3b
@@ -179,13 +178,13 @@
             (owner "12398") (balance {currency "PND"} "123.00") ))
 
 ;; The |or| operator can also select nodes based on their general types (*, <a>,
-;; <text>, <data>, <any>).  And if cxpath expressions are supplied, |or| will select
+;; <text>, <data>, <any>).  If cxpath expressions are supplied, |or| will also select
 ;; any nodes which yield results when at least one of the path expressions yields a
 ;; non-empty nodelist when applied to the node. This example selects any descendants
 ;; of account which are either text nodes, an owner element, an element having a currency
 ;; attribute (a subpath), or an element having a "b" subelement (also a subpath).
 (def v4b
-     ((cxpath '(customer account / (|or| <text> owner (<a> currency) (b))))
+     ((cxpath '(account-list account / (|or| <text> owner (<a> currency) (b))))
         doc-node))
 
 (results v4b
@@ -195,8 +194,8 @@
             "12398" "3212.12" "Main " " account." "short term savings" "  " 
             (owner "12398")
             (balance {currency "PND"} "123.00")
-            (descr-html "Primary" (b "checking") " account.")
-            "12398" "123.00" "Primary" " account." "checking" ))
+            (descr-html "Primary " (b "checking") " account.")
+            "12398" "123.00" "Primary " " account." "checking" ))
 
 
 ;; Alternatives with subpath projection - |alt|
@@ -206,14 +205,14 @@
 ;; (<a> currency) subpath, instead of the account/balance element the subpath was
 ;; applied to.
 (def v4c
-     ((cxpath '(customer account / (|alt| <text> owner (<a> currency))))
+     ((cxpath '(account-list account / (|alt| <text> owner (<a> currency))))
         doc-node))
 
 (results v4c
          '( (owner "12398")
             "12398" "3212.12" "Main " " account." "short term savings" "  "
             (owner "12398")
-            "12398" "123.00" "Primary" " account." "checking"
+            "12398" "123.00" "Primary " " account." "checking"
             [currency "USD"]
             [currency "PND"] ))
 
@@ -224,7 +223,7 @@
 ;; The next example is the same as the |or| example from above, but this time
 ;; we require a currency = "USD" within the subpath alternative.
 (def v5
-     ((cxpath '(customer account / (|or| owner (<a> currency (= "USD")))))
+     ((cxpath '(account-list account / (|or| owner (<a> currency (= "USD")))))
         doc-node))
 
 (results v5
@@ -236,7 +235,7 @@
 ;; The |not| operator is the complement of the |or| operator: it selects
 ;; a node whenever the |or| operator would not have.
 (def v6
-     ((cxpath '(customer account / (|not| <text> owner (<a> currency (= "USD")))))
+     ((cxpath '(account-list account / (|not| <text> owner (<a> currency (= "USD")))))
         doc-node))
 
 (results v6
@@ -248,20 +247,21 @@
             (b "short term savings")
             {title "Checking", created "4/27/2008"}
             (balance {currency "PND"} "123.00")
-            (descr-html "Primary" (b "checking") " account.")
+            (descr-html "Primary " (b "checking") " account.")
             {currency "PND"}
             (b "checking") ))
 
 
 ;; Parent selection - ..
 ;; The .. operator selects the parent nodes of its input nodes.
+;; This example selects the parents of any bold (b) elements anywhere in the document.
 (def v8a
      ((cxpath '(/ b ..)) 
         doc-node))
 
 (results v8a
          '( (descr-html "Main " (b "short term savings") " account.")
-            (descr-html "Primary" (b "checking") " account.") ))
+            (descr-html "Primary " (b "checking") " account.") ))
 
 
 
@@ -270,31 +270,30 @@
 ;; attribute collection. There's an asymmetry here, just as in w3c XPath, because
 ;; the attributes are not reachable on the child axis from the parent.
 (def v8b
-     ((cxpath '(customer account <a> title ..))
+     ((cxpath '(account-list account balance <a> currency ..))
         doc-node))
 
 (results v8b
-         '((account {title "Savings 1", created "3/5/2008"} (owner "12398") (balance {currency "USD"} "3212.12") (descr-html "Main " (b "short term savings") " account.") (report-separator "  ") (*PI* "myapp" "another processing instruction"))
-           (account {title "Checking", created "4/27/2008"} (owner "12398") (balance {currency "PND"} "123.00") (descr-html "Primary" (b "checking") " account."))))
-
+		 '( (balance {currency "USD"} "3212.12")
+			(balance {currency "PND"} "123.00") ))
 
 ;; Ancestor selection - ..*
 ;; The ..* operator selects the input nodes themselves plus any nodes
 ;; reachable through some number of applications of the parent operator.
 ;; The parent of the document element is the root element, *TOP*.
 (def v9
-     ((cxpath '(customer account <a> title ..*))
+     ((cxpath '(account-list account <a> title ..*))
         doc-node))
 
 (results v9
          (list
            '[title "Savings 1"] ; self 
-           '(account {title "Savings 1", created "3/5/2008"} (owner "12398") (balance {currency "USD"} "3212.12") (descr-html "Main " (b "short term savings") " account.") (report-separator "  ") (*PI* "myapp" "another processing instruction")) ; parent
-           '(customer (account {title "Savings 1", created "3/5/2008"} (owner "12398") (balance {currency "USD"} "3212.12") (descr-html "Main " (b "short term savings") " account.") (report-separator "  ") (*PI* "myapp" "another processing instruction")) (account {title "Checking", created "4/27/2008"} (owner "12398") (balance {currency "PND"} "123.00") (descr-html "Primary" (b "checking") " account."))) ; parent of parent
+		   (first ((cxpath '(account-list account)) doc-node)) ;; first account
+		   (first ((cxpath '(account-list)) doc-node)) ;; account-list
            doc-node ; entire document
            '[title "Checking"]
-           '(account {title "Checking", created "4/27/2008"} (owner "12398") (balance {currency "PND"} "123.00") (descr-html "Primary" (b "checking") " account."))
-           '(customer (account {title "Savings 1", created "3/5/2008"} (owner "12398") (balance {currency "USD"} "3212.12") (descr-html "Main " (b "short term savings") " account.") (report-separator "  ") (*PI* "myapp" "another processing instruction")) (account {title "Checking", created "4/27/2008"} (owner "12398") (balance {currency "PND"} "123.00") (descr-html "Primary" (b "checking") " account.")))
+		   (second ((cxpath '(account-list account)) doc-node)) ;; second account
+		   (first ((cxpath '(account-list)) doc-node)) ;; account-list
            doc-node))
 
 
@@ -322,7 +321,7 @@
 ;; results, to be filtered by the embedded subpath (<a> currencty (= "USD")) to form the
 ;; final results for the subpath.
 (def v10a
-     ((cxpath '(customer account (* (<a> currency (= "USD"))) <text>) )
+     ((cxpath '(account-list account (* (<a> currency (= "USD"))) <text>) )
       doc-node))
 
 (results v10a
@@ -336,7 +335,7 @@
 ;; (balance <a> currency (= "USD"))) as a filter.  Finally, the subsequent "owner <text>"
 ;; after the subpath acts on the result elements of the subpath.
 (def v10b
-     ((cxpath '(customer (* (balance <a> currency (= "USD"))) owner <text> )) 
+     ((cxpath '(account-list (* (balance <a> currency (= "USD"))) owner <text> )) 
         doc-node))
 
 (results v10b
@@ -347,23 +346,22 @@
 ;; We retrieve the descr-html/b elements from under any elements having balance text of
 ;; "3212.12" and owner text of "12398".
 (def v10c
-     ((cxpath '(customer (* (balance (= "3212.12")) (owner (= "12398"))) descr-html b ))
+     ((cxpath '(account-list (* (balance (= "3212.12")) (owner (= "12398"))) descr-html b ))
         doc-node))
 
 (results v10c
          '( (b  "short term savings") ))
 
 ;; Using subpaths to select nodes by position
-;; This example selects the last child element of account.  Here the subpath is (* -1),
-;; so we are selecting element children of account (the *), and -1 is the only filter,
-;; meaning the selected elements must be the last child (first from the end).
+;; This example selects the last child element of the first account.  Here the subpaths
+;; are (account 1) and (* -1).
 (def v10d
-     ((cxpath '(customer account (* -1)))
+     ((cxpath '(account-list (account 1) (* -1)))
         doc-node))
 
 (results v10d
-         '( (report-separator "  ")
-            (descr-html "Primary" (b "checking") " account.") ))
+         '( (report-separator "  ") ))
+            
 
 
 ;; The initial item in a subpath may itself be a cxpath expression.
@@ -374,7 +372,7 @@
 ;; result values of the subpath expression.  The remaining path steps after the subpath,
 ;; <a> currency <text>, then select the currency from the subpath's balance results.
 (def v10e
-     ((cxpath '(customer ((/ balance) ((= "3212.12"))) <a> currency <text> ))
+     ((cxpath '(account-list ((/ balance) ((= "3212.12"))) <a> currency <text> ))
         doc-node))
 
 (results v10e
@@ -513,7 +511,7 @@
 ;; is a converter that strips markup, and it is followed by an application of the filter-nodes
 ;; function which takes a predicate and uses it to filter nodes.
 (def v12b
-     ((cxp (customer account (* (~concatenated-descendants-text ~(filter-nodes #(re-seq #"[Mm]ain .* account" %)))) b))
+     ((cxp (account-list account (* (~concatenated-descendants-text ~(filter-nodes #(re-seq #"[Mm]ain .* account" %)))) b))
         doc-node))
 
 (results v12b

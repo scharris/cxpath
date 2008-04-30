@@ -29,8 +29,6 @@
 (load-file "utils.clj")
 
 
-;; TODO: look for usages of any == (ntype?? '<any>) in cxpath.clj, and replace with nil.  Modify converters to just avoid applying the node test when its not passed.
-
 ; Syntax symbols
 (def DESCENDANT-OR-SELF-SYM '/)
 (def NODESELF-SYM '.)
@@ -255,7 +253,7 @@ nodelist results (from a converter) translated to false.
 as-predicate:: Predicate|Converter -> Predicate"
   [conv-pred]
     (fn [x]
-        (let [ res (conv-pred x) ]
+        (let [res (conv-pred x)]
           (boolean (and res (not (empty-nodelist? res)))))))
 
 
@@ -653,7 +651,7 @@ below.  Use select-kids instead if more inclusive selection is wanted."
                                  (if (or ((ntype?? NTYPE-ELEMENT-SYM) n)
                                          ((ntype?? NTYPE-DATA-SYM) n))
                                    (conv-pred n)
-                                   nil))]
+								   nil))]
                      ((filter-nodes sel) (rest n-nl))))
              ;; Nodelist
              (seq? n-nl) (mapcat (child conv-pred) n-nl) 
@@ -672,11 +670,10 @@ A converter selecting all element and data child nodes of its argument node or n
 
 ;Parent axis
 
-; TODO: how about checking in metadata for a direct parent link (and modify the parser accordingly)?
 ; Was: sxml:parent
 (defn parent
-  "parent:: Converter|Predicate -> Node|Nodelist -> Node|Nodelist -> Nodelist,
-ie parent:: Converter|Predicate -> Node|Nodelist -> Converter
+  "parent:: Converter|Predicate, Node|Nodelist -> Node|Nodelist -> Nodelist,
+ie parent:: Converter|Predicate, Node|Nodelist -> Converter
 Represents the parent axis.
 Applied to a convertor or predicate and then a root node or nodes, it returns
 a converter which selects the parent nodes of its argument nodes if they exist
@@ -687,70 +684,63 @@ considered a child of the element (again, as in XPath). The attribute collection
 has no parent in the sense of this function.  The root nodes do not have to be the
 root nodes of whole cxml trees -- they may be root nodes of branches of interest.
 This parent axis can be used with any cxml node."
-  [conv-pred]
-    (fn [root-n-nl] ; node or nodelist
-        (fn [n-nl]  ; node or nodelist
-            (if (nodelist? n-nl)
-              (mapcat ((parent conv-pred) root-n-nl) n-nl)
-              ; single node
-              (let [ =n-nl? (node-equal? n-nl) ]
-                (loop [ parent-child-pairs (mapcat (fn [parent-n]
-                                                       (map #(vector parent-n %)
-                                                            (concat (attr-list parent-n)
-                                                                    (child-nodes parent-n))))
-                                                   (as-nodelist root-n-nl)) ]
-                  (if (nil? parent-child-pairs)
-                    nil ; parent of our node n-nl not found
-                    (let [ fst-pc (first parent-child-pairs)
-                           fst-c (fst-pc 1) ]
-                      (if (=n-nl? fst-c)
-                        ;; found it: test the parent and we're done
-                        (if ((as-predicate conv-pred) (fst-pc 0))
-                          (make-nodelist (fst-pc 0))
-                          nil)
-                        ;; not found - check our child node's own children before searching the rest (depth first search)
-                        (recur (concat (map #(vector fst-c %)
-                                            (concat (attr-list fst-c)
-                                                    (child-nodes fst-c)))
-                                       (rest parent-child-pairs))))))))))))
+  [conv-pred root-n-nl] ; node or nodelist
+    (let [pred? (as-predicate conv-pred)]
+	  (fn this-conv [n-nl]  ; node or nodelist
+		(if (nodelist? n-nl)
+		  (mapcat this-conv n-nl)
+		  ;; single node
+		  (loop [parent-child-pairs (mapcat (fn [parent-n]
+												(map #(vector parent-n %)
+													 (concat (attr-list parent-n)
+															 (child-nodes parent-n))))
+											(as-nodelist root-n-nl))]
+			(if (nil? parent-child-pairs)
+			  nil ; parent of our node n-nl not found
+			  (let [fst-pc (first parent-child-pairs)
+					fst-c (fst-pc 1)]
+				(if (= n-nl fst-c)
+				  ;; found it: test the parent and we're done
+				  (if (pred? (fst-pc 0))
+					(make-nodelist (fst-pc 0))
+					nil)
+				  ;; not found - check our child node's own children before searching the rest (depth first search)
+				  (recur (concat (map #(vector fst-c %)
+									  (concat (attr-list fst-c)
+											  (child-nodes fst-c)))
+								 (rest parent-child-pairs)))))))))))
 
 
 ; Ancestor axis
 
 ; Implementation function for the following ancestor aces functions, parameterized over whether to include the nodes themselves or proper ancestors only.
 (defn- ancestor-impl
-  [include-selves]
-  (fn [conv-pred]
-    (fn [root-n-nl]   ; node or nodelist
-      (fn [n-nl]      ; node or nodelist
-         (if (nodelist? n-nl)
-           (mapcat (((ancestor-impl include-selves) conv-pred) root-n-nl) n-nl)
-           ; n-nl is a single node
-           (let [ pred? (as-predicate conv-pred)
-                  =n-nl? (node-equal? n-nl) ]
-             (loop [ paths (map make-nodelist (as-nodelist root-n-nl)) ] ; paths is a collection of nodelists, each ending at a root
-               (if (nil? paths)
-                 ; no ancestor, maybe return self
-                 (if (and include-selves (pred? n-nl))
-                   (make-nodelist n-nl)
-                   nil)
-                 ; more paths to search
-                 (let [ path (first paths)
-                        leaf-node (first path) ]
-                   (if (=n-nl? leaf-node)                                            ; Does this path to a root start at our node?
-                     ((filter-nodes conv-pred) (if include-selves path (rest path))) ; - yes, and so we have our ancestors
-                     (recur (concat (map #(cons % path)                              ; - no, continue searching
-                                         (concat (attr-list leaf-node)
-                                                 (child-nodes leaf-node)))
-                                    (rest paths)))))))))))))
+  [include-selves pred? root-n-nl]
+    (fn this-conv [n-nl]
+	  (if (nodelist? n-nl)
+		(mapcat this-conv n-nl)
+		;; n-nl is a single node
+		(loop [paths (map make-nodelist (as-nodelist root-n-nl))] ; paths is a collection of nodelists, each ending at a root
+		  (if (nil? paths)
+			;; no ancestor, maybe return self
+			(if (and include-selves (pred? n-nl))
+			  (make-nodelist n-nl)
+			  nil)
+			;; more paths to search
+			(let [path (first paths)
+				  leaf-node (first path)]
+			  (if (= n-nl leaf-node)                                ; Does this path to a root start at our node?
+				(filter pred? (if include-selves path (rest path))) ; - yes, and so we have our ancestors
+				(recur (concat (map #(cons % path)                  ; - no, continue searching
+									(concat (attr-list leaf-node)
+											(child-nodes leaf-node)))
+							   (rest paths))))))))))
 
 
 ; Was sxml:ancestor
-(def 
- #^{:arglists '([conv-pred])
-    :doc
-  "ancestor:: Converter|Predicate -> Node|Nodelist -> Node|Nodelist -> Nodelist,
-ie ancestor:: Converter|Predicate -> Node|Nodelist -> Converter
+(defn ancestor 
+  "ancestor:: Converter|Predicate, Node|Nodelist -> Node|Nodelist -> Nodelist,
+ie ancestor:: Converter|Predicate, Node|Nodelist -> Converter
 Represents the ancestor axis.
 Applied to a convertor or predicate and then a root node or nodes, it returns a
 converter which selects the ancestor nodes of its argument nodes if they exist as
@@ -759,18 +749,17 @@ descendants of the root nodes and satisfy the predicate.  Attribute/value pairs
 collection they are a part of, but the attribute collections (maps) do not
 themselves have any ancestors in the sense of this function. The root nodes do not
 have to be the root nodes of whole cxml trees -- they may be root nodes of branches
-of interest.  This ancestor axis can be used with any cxml node."}
- ancestor (ancestor-impl false))
+of interest.  This ancestor axis can be used with any cxml node."
+  [conv-pred root-n-nl]
+  (ancestor-impl false (as-predicate conv-pred) root-n-nl))
 
 
 ; Ancestor-or-self axis
 
 ; Was: sxml:ancestor-or-self
-(def
- #^{:arglists '([conv-pred])
-    :doc
-  "ancestor-or-self:: Converter|Predicate -> Node|Nodelist -> Node|Nodelist -> Nodelist,
-ie ancestor-or-self:: Converter|Predicate -> Node|Nodelist -> Converter
+(defn ancestor-or-self
+  "ancestor-or-self:: Converter|Predicate, Node|Nodelist -> Node|Nodelist -> Nodelist,
+ie ancestor-or-self:: Converter|Predicate, Node|Nodelist -> Converter
 Represents the ancestor-or-self axis.
 Applied to a convertor or predicate and then a root node or nodes, it returns a converter
 which selects the argument nodes themselves that satisfy the predicate, together with
@@ -779,8 +768,9 @@ satisfy the predicate.  Attribute/value pairs (vectors) have ancestors starting 
 element containing the attribute collection they are a part of, but the attribute
 collections (maps) do not themselves have any ancestors in the sense of this function.
 The root nodes do not have to be the root nodes of whole cxml trees - they may be root
-nodes of branches of interest.  This ancestor-or-self axis can be used with any cxml node."}
-  ancestor-or-self (ancestor-impl true))
+nodes of branches of interest.  This ancestor-or-self axis can be used with any cxml node."
+  [conv-pred root-n-nl]
+  (ancestor-impl true (as-predicate conv-pred) root-n-nl))
 
                                                                       
 
@@ -788,32 +778,29 @@ nodes of branches of interest.  This ancestor-or-self axis can be used with any 
 
 ; Implementation function, parameterized over whether to include the nodes themselves or proper descendants only.
 (defn- descendant-impl
-  [include-selves]
-  (fn [conv-pred]
-    (fn [n-nl]       ; node or nodelist
-       (cond
-         ; Nodelist
-         (nodelist? n-nl) 
-           (mapcat ((descendant-impl include-selves) conv-pred) n-nl)
-         ; Element
-         (element? n-nl)
-           (let [ pred? (as-predicate conv-pred) ]
-             (loop [ sels nil
-                     candidate-nodes (if include-selves (make-nodelist n-nl) (child-nodes n-nl)) ]
-               (if (nil? candidate-nodes)
-                 (reverse sels)
-                 (let [ node (first candidate-nodes) ]
-                   (recur (if (pred? node)
-                            (cons node sels)
-                            sels)
-                          (concat (child-nodes node)
-                                  (rest candidate-nodes)))))))
-         ; Anything else
-         :else nil))))
+  [include-selves pred?]
+  (fn this-conv [n-nl]       ; node or nodelist
+	(cond
+	  ;; Nodelist
+	  (nodelist? n-nl) 
+	    (mapcat this-conv n-nl)
+	  ;; Element
+	  (element? n-nl)
+	    (loop [sels nil
+			   candidate-nodes (if include-selves (make-nodelist n-nl) (child-nodes n-nl))]
+	 	  (if (nil? candidate-nodes)
+			(reverse sels)
+			(let [node (first candidate-nodes)]
+			  (recur (if (pred? node)
+					   (cons node sels)
+					   sels)
+					 (concat (child-nodes node)
+							 (rest candidate-nodes))))))
+	  ;; Anything else
+	  :else nil)))
 
-(def
- #^{:arglists '([conv-pred])
-    :doc
+
+(defn descendant
   "descendant:: Converter|Predicate -> Node|Nodelist -> Nodelist
 ie descendant:: Converter|Predicate -> Converter
 Represents the descendant axis.
@@ -827,15 +814,14 @@ this implementation is more restrictive than the original Scheme version
 (which had been marked to fix in this regard), which would descend into
 attribute collections at any level, and *PI*, *COMMENT* and *ENTITY* nodes
 at the top level.  For a slightly less restrictive (and breadth-first)
-implementation of a similar idea, see node-closure."}
-   descendant (descendant-impl false))
+implementation of a similar idea, see node-closure."
+   [conv-pred]
+   (descendant-impl false (as-predicate conv-pred)))
 
 
 ; Descendant-or-self axis
 
-(def
- #^{:arglists '([conv-pred])
-    :doc
+(defn descendant-or-self
   "descendant-or-self:: Converter|Predicate -> Node|Nodelist -> Nodelist
 ie descendant-or-self:: Converter|Predicate -> Converter
 Represents the descendant-or-self axis.
@@ -848,43 +834,43 @@ are returned in document (depth first) order.  For XPath conformance, this
 implementation is more restrictive than the original Scheme version (which had
 been marked to fix in this regard), which would descend into attribute collections
 at any level, and *PI*, *COMMENT* and *ENTITY* nodes at the top level. For a slightly
-less restrictive (and breadth-first) implementation of a similar idea, see node-closure."}
-   descendant-or-self (descendant-impl true))
-
+less restrictive (and breadth-first) implementation of a similar idea, see node-closure."
+   [conv-pred]
+   (descendant-impl true (as-predicate conv-pred)))
 
 
 ; TODO: examine the following for correctness (check w3c defs) and add unit tests
 
 ; Following axis
-(defn following [conv-pred]
-  (fn [root-n-nl]   ; node or nodelist
-    (fn [n-nl]      ; node or nodelist
+(defn following [conv-pred root-n-nl]
+    (fn this-conv [n-nl]      ; node or nodelist
       (if (nodelist? n-nl)
-        (mapcat ((following conv-pred) root-n-nl) n-nl)
-        ; n-nl is a single node
-        (let [ =n-nl? (node-equal? n-nl) ]
-          (loop [ seq (map make-nodelist (as-nodelist root-n-nl)) ]
-            (cond
-               (nil? seq) nil
+        (mapcat this-conv n-nl)
+		;; n-nl is a single node
+		(loop [ seq (map make-nodelist (as-nodelist root-n-nl)) ]
+		  (cond
+		   (nil? seq) 
+		     nil
 
-               (nil? (first seq)) (recur (rest seq))
+		   (nil? (first seq))
+		     (recur (rest seq))
 
-               ;; found our node as an element
-               (=n-nl? (ffirst seq))
-                 (reduce (fn [res node] (concat res ((descendant-or-self conv-pred) node)))
-                         nil
-                         (rest (apply concat seq)))
+		   ;; found our node as an element
+		   (= n-nl (ffirst seq))
+		     (reduce (fn [res node] (concat res ((descendant-or-self conv-pred) node)))
+					 nil
+					 (rest (apply concat seq)))
            
-               ;; found our node as an attribute
-               (and (element? (ffirst seq))
-                    (some =n-nl? (attr-list (ffirst seq))))
-                 (reduce (fn [res node] (concat res ((descendant-or-self conv-pred) node)))
-                         ((descendant conv-pred) (ffirst seq)) ; TODO: Watch out here, the attributes are not considere descendants anymore
-                         (rest (apply concat seq)))
+		   ;; found our node as an attribute
+		   (and (element? (ffirst seq))
+				(some #(= n-nl %) (attr-list (ffirst seq))))
+		     (reduce (fn [res node] (concat res ((descendant-or-self conv-pred) node)))
+					 ((descendant conv-pred) (ffirst seq)) ; TODO: Watch out here, the attributes are not considere descendants anymore
+					 (rest (apply concat seq)))
 
-               :else
-                 (recur (cons (child-nodes (ffirst seq))
-                              (cons (rfirst seq) (rest seq)))))))))))
+		   :else
+		     (recur (cons (child-nodes (ffirst seq))
+                              (cons (rfirst seq) (rest seq)))))))))
 
 
 
@@ -987,7 +973,7 @@ less restrictive (and breadth-first) implementation of a similar idea, see node-
 ; Please note: this function is provided for backward compatibility 
 ; with SXPath/SXPathlib ver. 3.5.x.x and earlier.
 ; Now it's a particular case of 'parent' application: 
-(def node-parent (parent (ntype?? NTYPE-ANY-SYM)))
+(defn node-parent [root-n-nl] (parent (ntype?? NTYPE-ANY-SYM) root-n-nl))
 
 
 (def concatenated-descendants-text
