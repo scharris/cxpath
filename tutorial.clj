@@ -480,12 +480,12 @@
 ;; A big advantage of SXPath and cxpath vs. the string-based w3c XPath is how natural it is to use
 ;; ordinary functions as custom path steps.
 
+(comment ; Rich plans to add #` which will replace the cxp macro below (which would have required a patch)
 
 ;; This example illustrates using a regular clojure function (f) as a filter in the middle of a path.
 ;; It selects all the attribute values from elements which have at least 2 attributes.  Here f assumes
 ;; that its input nodes will be collections (attribute maps), which is true because of the preceeding
-;; part of the path.  Here cxp is a macro for applying cxpath which automatically quotes symbols in the
-;; passed path and allows unquoting as in syntax quote.
+;; part of the path. 
 (def v12a
      (let [f (fn [nodelist] 
                  (filter (fn [attrs-coll] (>= (count attrs-coll) 2)) nodelist))]
@@ -516,5 +516,6 @@
 
 (results v12b
          '( (b "short term savings") ))
+)
 
 ;; (load-file "tutorial.clj") (in-ns 'cxpath)
